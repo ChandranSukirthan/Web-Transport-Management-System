@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tracking Sessions</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white text-slate-900">
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-bold">Tracking Sessions</h1>
+      <div class="flex items-center gap-2">
+        <button id="refreshBtn" class="px-3 py-2 rounded text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed" title="Reload list">Refresh</button>
+        <button id="createBtn" class="px-3 py-2 rounded text-white bg-slate-600 hover:bg-slate-700" title="Create new session">New Session</button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+      <div>
+        <label class="text-sm text-slate-600" for="filterRideId">Ride ID</label>
+        <input id="filterRideId" type="number" class="border border-slate-300 rounded px-3 py-2 w-full" placeholder="e.g. 123" />
+      </div>
+      <div>
+        <label class="text-sm text-slate-600" for="filterDriverId">Driver ID</label>
+        <input id="filterDriverId" type="number" class="border border-slate-300 rounded px-3 py-2 w-full" placeholder="e.g. 5" />
+      </div>
+      <div>
+        <label class="text-sm text-slate-600" for="filterRiderUserId">Rider User ID</label>
+        <input id="filterRiderUserId" type="text" class="border border-slate-300 rounded px-3 py-2 w-full" placeholder="e.g. user_001" />
+      </div>
+      <div class="flex gap-2">
+        <button id="applyFilters" class="px-3 py-2 rounded text-white bg-orange-500 hover:bg-orange-600" type="button">Apply</button>
+        <button id="clearFilters" class="px-3 py-2 rounded text-white bg-slate-600 hover:bg-slate-700" type="button">Clear</button>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div id="alert" class="hidden mb-3 p-3 rounded border"></div>
+
+    <!-- Table -->
+    <div class="overflow-auto border border-slate-200 rounded-lg">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="text-left px-3 py-2">ID</th>
+            <th class="text-left px-3 py-2">Ride</th>
+            <th class="text-left px-3 py-2">Driver</th>
+            <th class="text-left px-3 py-2">Rider</th>
+            <th class="text-left px-3 py-2">Start</th>
+            <th class="text-left px-3 py-2">End</th>
+            <th class="text-left px-3 py-2">Status</th>
+            <th class="text-left px-3 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <!-- Create Modal -->
+    <dialog id="createDialog" class="p-0 rounded-lg w-full max-w-md">
+      <form method="dialog" class="p-4">
+        <h2 class="text-lg font-semibold mb-3">Create Tracking Session</h2>
+        <div class="grid grid-cols-1 gap-3">
+          <div>
+            <label for="newRideId" class="text-sm text-slate-600">Ride ID</label>
+            <input id="newRideId" type="number" class="border border-slate-300 rounded px-3 py-2 w-full" placeholder="Ride ID" required />
+          </div>
+          <div>
+            <label for="newDriverId" class="text-sm text-slate-600">Driver ID</label>
+            <input id="newDriverId" type="number" class="border border-slate-300 rounded px-3 py-2 w-full" placeholder="Driver ID" required />
+          </div>
+          <div>
+            <label for="newRiderUserId" class="text-sm text-slate-600">Rider User ID</label>
+            <input id="newRiderUserId" type="text" class="border border-slate-300 rounded px-3 py-2 w-full" placeholder="Rider User ID" required />
+          </div>
+          <div>
+            <label for="newCreatedBy" class="text-sm text-slate-600">Created By</label>
+            <select id="newCreatedBy" class="border border-slate-300 rounded px-3 py-2 w-full">
+              <option value="system">system</option>
+              <option value="rider">rider</option>
+              <option value="driver">driver</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-4 flex justify-end gap-2">
+          <button type="button" id="cancelCreate" class="px-3 py-2 rounded text-white bg-slate-600 hover:bg-slate-700">Cancel</button>
+          <button type="button" id="submitCreate" class="px-3 py-2 rounded text-white bg-orange-500 hover:bg-orange-600">Create</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+
+  <script>
+    const rowsEl = document.getElementById('rows');
+    const alertEl = document.getElementById('alert');
+
+    function showAlert(text, kind = 'info') {
+      alertEl.textContent = text;
+      alertEl.className = 'mb-3 p-3 rounded border ' + (kind === 'error' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-green-50 border-green-300 text-green-700');
+      alertEl.classList.remove('hidden');
+      setTimeout(() => alertEl.classList.add('hidden'), 3000);
+    }
+
+    function fmt(dt) {
+      if (!dt) return '-';
+      try { return new Date(dt).toLocaleString(); } catch { return dt; }
+    }
+
+    function statusBadge(status) {
+      switch ((status||'').toUpperCase()) {
+        case 'ACTIVE': return 'inline-block px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-700';
+        case 'COMPLETED': return 'inline-block px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-700';
+        case 'CANCELLED': return 'inline-block px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-700';
+        case 'ENDED': return 'inline-block px-2 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700';
+        default: return 'inline-block px-2 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-700';
+      }
+    }
+
+    function render(sessions) {
+      rowsEl.innerHTML = '';
+      if (!Array.isArray(sessions) || sessions.length === 0) {
+        rowsEl.innerHTML = '<tr><td colspan="8" class="px-3 py-4 text-center text-slate-500">No sessions</td></tr>';
+        return;
+      }
+      // Sort by startTime desc client-side for now
+      sessions.sort((a,b) => new Date(b.startTime) - new Date(a.startTime));
+      for (const s of sessions) {
+        const tr = document.createElement('tr');
+        tr.className = 'border-t';
+        tr.innerHTML = `
+          <td class="px-3 py-2">${s.id}</td>
+          <td class="px-3 py-2">${s.ride?.id ?? '-'}</td>
+          <td class="px-3 py-2">${s.driver?.id ?? '-'}</td>
+          <td class="px-3 py-2">${s.riderUserId ?? '-'}</td>
+          <td class="px-3 py-2">${fmt(s.startTime)}</td>
+          <td class="px-3 py-2">${fmt(s.endTime)}</td>
+          <td class="px-3 py-2"><span class="${statusBadge(s.status)}">${s.status || '-'}</span></td>
+          <td class="px-3 py-2">
+            <div class="flex items-center gap-2">
+              <select class="border border-slate-300 rounded px-2 py-1 w-36" data-sid="${s.id}" data-type="status">
+                <option value="ACTIVE" ${s.status==='ACTIVE'?'selected':''}>ACTIVE</option>
+                <option value="ENDED" ${s.status==='ENDED'?'selected':''}>ENDED</option>
+                <option value="CANCELLED" ${s.status==='CANCELLED'?'selected':''}>CANCELLED</option>
+                <option value="COMPLETED" ${s.status==='COMPLETED'?'selected':''}>COMPLETED</option>
+              </select>
+              <button class="px-3 py-2 rounded text-white bg-orange-500 hover:bg-orange-600" data-action="save" data-id="${s.id}">Save</button>
+              <button class="px-3 py-2 rounded text-white bg-slate-600 hover:bg-slate-700" data-action="end" data-id="${s.id}">End Now</button>
+              <button class="px-3 py-2 rounded text-white bg-red-600 hover:bg-red-700" data-action="del" data-id="${s.id}">Delete</button>
+            </div>
+          </td>
+        `;
+        rowsEl.appendChild(tr);
+      }
+    }
+
+    async function load() {
+      const rideEl = document.getElementById('filterRideId');
+      const driverEl = document.getElementById('filterDriverId');
+      const riderEl = document.getElementById('filterRiderUserId');
+      const rId = (rideEl && rideEl.value ? rideEl.value : '').trim();
+      const dId = (driverEl && driverEl.value ? driverEl.value : '').trim();
+      const ru = (riderEl && riderEl.value ? riderEl.value : '').trim();
+      const params = new URLSearchParams();
+      if (rId) params.append('rideId', rId);
+      if (dId) params.append('driverId', dId);
+      if (ru) params.append('riderUserId', ru);
+      const url = '/api/tracking-sessions' + (params.toString() ? ('?' + params.toString()) : '');
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Failed to load');
+        const data = await res.json();
+        render(data);
+      } catch (e) {
+        showAlert('Failed to load sessions', 'error');
+      }
+    }
+
+    async function createSession() {
+      const rideId = parseInt(document.getElementById('newRideId').value, 10);
+      const driverId = parseInt(document.getElementById('newDriverId').value, 10);
+      const riderUserId = document.getElementById('newRiderUserId').value.trim();
+      const createdBy = document.getElementById('newCreatedBy').value;
+      if (!rideId || !driverId || !riderUserId) { showAlert('All fields are required', 'error'); return; }
+      try {
+        const res = await fetch('/api/tracking-sessions', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rideId, driverId, riderUserId, createdBy })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        closeCreate();
+        showAlert('Session created');
+        await load();
+      } catch (e) {
+        showAlert('Create failed', 'error');
+      }
+    }
+
+    async function updateStatus(id, status, endNow = false) {
+      const body = { status };
+      if (endNow) body.endTime = new Date().toISOString();
+      try {
+        const res = await fetch(`/api/tracking-sessions/${id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        showAlert('Session updated');
+        await load();
+      } catch (e) {
+        showAlert('Update failed', 'error');
+      }
+    }
+
+    async function remove(id) {
+      if (!confirm('Delete this session?')) return;
+      try {
+        const res = await fetch(`/api/tracking-sessions/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(await res.text());
+        showAlert('Session deleted');
+        await load();
+      } catch (e) {
+        showAlert('Delete failed', 'error');
+      }
+    }
+
+    // Events
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) refreshBtn.addEventListener('click', load);
+
+    const applyBtn = document.getElementById('applyFilters');
+    if (applyBtn) applyBtn.addEventListener('click', load);
+
+    const clearBtn = document.getElementById('clearFilters');
+    if (clearBtn) clearBtn.addEventListener('click', () => {
+      const rideEl = document.getElementById('filterRideId');
+      const driverEl = document.getElementById('filterDriverId');
+      const riderEl = document.getElementById('filterRiderUserId');
+      if (rideEl) rideEl.value = '';
+      if (driverEl) driverEl.value = '';
+      if (riderEl) riderEl.value = '';
+      load();
+    });
+
+    // Row action delegation
+    rowsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      const action = btn.getAttribute('data-action');
+      if (!id || !action) return;
+      if (action === 'save') {
+        const sel = rowsEl.querySelector(`select[data-sid="${id}"][data-type="status"]`);
+        if (!sel) return;
+        updateStatus(id, sel.value);
+      } else if (action === 'end') {
+        const sel = rowsEl.querySelector(`select[data-sid="${id}"][data-type="status"]`);
+        const next = sel ? sel.value : 'ENDED';
+        updateStatus(id, next === 'ACTIVE' ? 'ENDED' : next, true);
+      } else if (action === 'del') {
+        remove(id);
+      }
+    });
+
+    // Create dialog
+    const dlg = document.getElementById('createDialog');
+    const createBtn = document.getElementById('createBtn');
+    if (createBtn && dlg) createBtn.addEventListener('click', () => dlg.showModal());
+    const cancelCreate = document.getElementById('cancelCreate');
+    if (cancelCreate && dlg) cancelCreate.addEventListener('click', () => dlg.close());
+    function closeCreate(){ if (!dlg) return; const nr=document.getElementById('newRideId'); const nd=document.getElementById('newDriverId'); const nu=document.getElementById('newRiderUserId'); const nc=document.getElementById('newCreatedBy'); dlg.close(); if(nr) nr.value=''; if(nd) nd.value=''; if(nu) nu.value=''; if(nc) nc.value='system'; }
+    const submitCreate = document.getElementById('submitCreate');
+    if (submitCreate) submitCreate.addEventListener('click', createSession);
+
+    // Initial load
+    load();
+  </script>
+</body>
+</html>

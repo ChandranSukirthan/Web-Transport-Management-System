@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Ride Cancelled — QuickMove</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>@import url("https://rsms.me/inter/inter.css");</style>
+  <script>
+    function qp(name, dflt = ''){ const u = new URL(window.location.href); return u.searchParams.get(name) ?? dflt; }
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const rideId = qp('rideId');
+      const el = document.getElementById('rid');
+      if(rideId && el) el.textContent = '#' + rideId;
+    });
+  </script>
+</head>
+<body class="bg-white text-slate-800">
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/ride-booking.html" class="text-xl font-bold text-orange-600">QuickMove</a>
+      <a href="/ride-booking.html" class="text-sm font-medium text-orange-600 hover:text-orange-700">Book a ride</a>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-14 text-center">
+    <div class="mx-auto w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-6">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-10 text-red-600"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 5h2v7h-2V7zm0 9h2v2h-2v-2z"/></svg>
+    </div>
+    <h1 class="text-2xl md:text-3xl font-bold text-red-600">Ride Cancelled</h1>
+    <p class="text-slate-600 mt-2">Your ride <span id="rid" class="font-semibold text-slate-800">#—</span> was cancelled.</p>
+    <div class="mt-6">
+      <a href="/ride-booking.html" class="inline-block px-5 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold">Book another ride</a>
+    </div>
+  </main>
+</body>
+</html>
+

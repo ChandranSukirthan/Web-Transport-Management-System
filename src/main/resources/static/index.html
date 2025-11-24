@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickMove - Your Reliable Ride Hailing Service</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#ff6b35',
+                        'primary-dark': '#e55a2b',
+                        'primary-light': '#ff8c5a',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-sans">
+<!-- Header/Navigation -->
+<header class="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
+    <nav class="container mx-auto px-4 py-4">
+        <div class="flex justify-between items-center">
+            <!-- Logo -->
+            <div class="flex items-center gap-3">
+                <i class="fas fa-car text-4xl text-primary"></i>
+                <span class="text-2xl font-bold text-primary">QuickMove</span>
+            </div>
+
+            <!-- Desktop Navigation -->
+            <ul class="hidden md:flex space-x-8">
+                <li><a href="#home" class="text-gray-700 hover:text-primary transition font-medium">Home</a></li>
+                <li><a href="#about" class="text-gray-700 hover:text-primary transition font-medium">About</a></li>
+                <li><a href="#features" class="text-gray-700 hover:text-primary transition font-medium">Features</a></li>
+                <li><a href="#testimonials" class="text-gray-700 hover:text-primary transition font-medium">Testimonials</a></li>
+                <li><a href="#faq" class="text-gray-700 hover:text-primary transition font-medium">FAQ</a></li>
+                <li><a href="#contact" class="text-gray-700 hover:text-primary transition font-medium">Contact</a></li>
+            </ul>
+
+            <!-- Auth Buttons (Desktop) - Conditional Rendering -->
+            <div class="hidden md:flex items-center gap-3">
+                <!-- Show if user is NOT authenticated -->
+                <div class="flex items-center gap-3">
+                    <a href="/login" class="px-6 py-2 border-2 border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition font-medium">
+                        Login
+                    </a>
+                    <a href="/register" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium">
+                        Register
+                    </a>
+                </div>
+
+                <!-- Show if user IS authenticated (static file can't detect auth) -->
+                <!--<div th:if="${isAuthenticated}" class="flex items-center gap-4">-->
+                <!--        <span class="text-gray-700 font-medium">-->
+                <!--            Welcome, <span class="text-primary" th:text="${username}">User</span>!-->
+                <!--        </span>-->
+                <!--    <a th:href="@{/logout}" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">-->
+                <!--        Logout-->
+                <!--    </a>-->
+                <!--</div>-->
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <button id="mobileMenuBtn" class="md:hidden text-2xl text-gray-700">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="hidden md:hidden mt-4 pb-4">
+            <ul class="flex flex-col space-y-3">
+                <li><a href="#home" class="block text-gray-700 hover:text-primary transition font-medium">Home</a></li>
+                <li><a href="#about" class="block text-gray-700 hover:text-primary transition font-medium">About</a></li>
+                <li><a href="#features" class="block text-gray-700 hover:text-primary transition font-medium">Features</a></li>
+                <li><a href="#testimonials" class="block text-gray-700 hover:text-primary transition font-medium">Testimonials</a></li>
+                <li><a href="#faq" class="block text-gray-700 hover:text-primary transition font-medium">FAQ</a></li>
+                <li><a href="#contact" class="block text-gray-700 hover:text-primary transition font-medium">Contact</a></li>
+            </ul>
+
+            <!-- Auth Buttons (Mobile) - Conditional Rendering -->
+            <div class="mt-4">
+                <!-- Show if user is NOT authenticated -->
+                <div class="flex flex-col gap-3">
+                    <a href="/login" class="px-6 py-2 border-2 border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition font-medium text-center">
+                        Login
+                    </a>
+                    <a href="/register" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium text-center">
+                        Register
+                    </a>
+                </div>
+
+                <!-- Show if user IS authenticated -->
+                <!--<div class="flex flex-col gap-3">-->
+                <!--    <div class="text-center text-gray-700 font-medium">-->
+                <!--        Welcome, <span class="text-primary" th:text="${username}">User</span>!-->
+                <!--    </div>-->
+                <!--    <a th:href="@{/logout}" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium text-center">-->
+                <!--        Logout-->
+                <!--    </a>-->
+                <!--</div>-->
+            </div>
+        </div>
+    </nav>
+</header>
+
+<!-- Hero Section -->
+<section id="home" class="pt-24 pb-16 bg-gradient-to-br from-orange-50 to-white">
+    <div class="container mx-auto px-4 py-16">
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+            <!-- Hero Text -->
+            <div>
+                <h1 class="text-5xl md:text-6xl font-bold text-gray-800 mb-6">
+                    Your Ride, <span class="text-primary">Anytime, Anywhere</span>
+                </h1>
+                <p class="text-xl text-gray-600 mb-8">
+                    Experience fast, safe, and affordable rides with QuickMove. Your journey begins with just a tap!
+                </p>
+                <div class="flex flex-wrap gap-4 mb-8">
+                    <a href="/book-ride" class="px-8 py-4 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium text-lg shadow-lg">
+                        Book a Ride Now
+                    </a>
+                    <a href="/become-driver" class="px-8 py-4 border-2 border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition font-medium text-lg">
+                        Become a Driver
+                    </a>
+                </div>
+                <!-- App Downloads -->
+                <div class="flex flex-wrap gap-4">
+                    <a href="#" class="flex items-center gap-3 px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition">
+                        <i class="fab fa-apple text-3xl"></i>
+                        <div class="text-left">
+                            <div class="text-xs">Download on the</div>
+                            <div class="text-lg font-semibold">App Store</div>
+                        </div>
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition">
+                        <i class="fab fa-google-play text-3xl"></i>
+                        <div class="text-left">
+                            <div class="text-xs">Get it on</div>
+                            <div class="text-lg font-semibold">Google Play</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            <!-- Hero Image -->
+            <div class="hidden md:block">
+                <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=600&h=600&fit=crop" alt="QuickMove Taxi Service" class="rounded-2xl shadow-2xl w-full">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- About Section -->
+<section id="about" class="py-20 bg-white">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-bold text-gray-800 mb-4">About QuickMove</h2>
+            <p class="text-xl text-gray-600">Your trusted partner in urban mobility</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+            <!-- Image -->
+            <div>
+                <img src="https://images.unsplash.com/photo-1485291571150-772bcfc10da5?w=600&h=600&fit=crop" alt="About QuickMove" class="rounded-2xl shadow-xl w-full">
+            </div>
+            <!-- Text -->
+            <div>
+                <h3 class="text-3xl font-bold text-gray-800 mb-4">Transforming Transportation Since 2020</h3>
+                <p class="text-gray-600 mb-4 text-lg">
+                    QuickMove is a leading ride-hailing platform dedicated to providing seamless, safe, and affordable transportation solutions. We connect riders with professional drivers through our innovative mobile application.
+                </p>
+                <p class="text-gray-600 mb-8 text-lg">
+                    Our mission is to make every journey comfortable and reliable while ensuring the highest standards of safety and customer satisfaction. With thousands of drivers and millions of rides completed, we're proud to be your preferred choice for daily commutes and special trips.
+                </p>
+                <!-- Stats -->
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="text-center p-4 bg-orange-50 rounded-lg">
+                        <h4 class="text-3xl font-bold text-primary mb-2">500K+</h4>
+                        <p class="text-gray-600">Active Users</p>
+                    </div>
+                    <div class="text-center p-4 bg-orange-50 rounded-lg">
+                        <h4 class="text-3xl font-bold text-primary mb-2">10K+</h4>
+                        <p class="text-gray-600">Professional Drivers</p>
+                    </div>
+                    <div class="text-center p-4 bg-orange-50 rounded-lg">
+                        <h4 class="text-3xl font-bold text-primary mb-2">50+</h4>
+                        <p class="text-gray-600">Cities Covered</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="py-20 bg-gray-50">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-bold text-gray-800 mb-4">Why Choose QuickMove?</h2>
+            <p class="text-xl text-gray-600">Experience the best ride-hailing features</p>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Feature 1 -->
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-bolt text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-3">Quick Booking</h3>
+                <p class="text-gray-600">Book your ride in seconds with our user-friendly interface. No waiting, no hassle.</p>
+            </div>
+            <!-- Feature 2 -->
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-shield-alt text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-3">Safe & Secure</h3>
+                <p class="text-gray-600">All drivers are verified and trained. Track your ride in real-time for complete safety.</p>
+            </div>
+            <!-- Feature 3 -->
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-dollar-sign text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-3">Affordable Pricing</h3>
+                <p class="text-gray-600">Transparent pricing with no hidden charges. Get the best value for your money.</p>
+            </div>
+            <!-- Feature 4 -->
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-clock text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-3">24/7 Availability</h3>
+                <p class="text-gray-600">Need a ride at any time? We're available round the clock, every day of the year.</p>
+            </div>
+            <!-- Feature 5 -->
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-map-marked-alt text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-3">Live Tracking</h3>
+                <p class="text-gray-600">Track your driver in real-time and share your trip details with loved ones.</p>
+            </div>
+            <!-- Feature 6 -->
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-credit-card text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-3">Multiple Payment Options</h3>
+                <p class="text-gray-600">Pay with cash, card, or digital wallets. Choose what's convenient for you.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials Section -->
+<section id="testimonials" class="py-20 bg-white">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-bold text-gray-800 mb-4">What Our Customers Say</h2>
+            <p class="text-xl text-gray-600">Real experiences from real riders</p>
+        </div>
+        <div class="grid md:grid-cols-3 gap-8">
+            <!-- Testimonial 1 -->
+            <div class="bg-gray-50 p-8 rounded-xl shadow-lg">
+                <div class="flex gap-1 mb-4">
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                </div>
+                <p class="text-gray-600 mb-6 italic">"QuickMove has been my go-to app for daily commutes. The drivers are professional, and the rides are always comfortable. Highly recommended!"</p>
+                <div class="flex items-center gap-4">
+                    <img src="https://i.pravatar.cc/100?img=1" alt="Sarah Johnson" class="w-16 h-16 rounded-full">
+                    <div>
+                        <h4 class="font-bold text-gray-800">Sarah Johnson</h4>
+                        <p class="text-gray-500">Marketing Executive</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Testimonial 2 -->
+            <div class="bg-gray-50 p-8 rounded-xl shadow-lg">
+                <div class="flex gap-1 mb-4">
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                </div>
+                <p class="text-gray-600 mb-6 italic">"The safety features and real-time tracking give me peace of mind. I feel secure every time I book a ride, especially during late-night travels."</p>
+                <div class="flex items-center gap-4">
+                    <img src="https://i.pravatar.cc/100?img=12" alt="Michael Chen" class="w-16 h-16 rounded-full">
+                    <div>
+                        <h4 class="font-bold text-gray-800">Michael Chen</h4>
+                        <p class="text-gray-500">Software Developer</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Testimonial 3 -->
+            <div class="bg-gray-50 p-8 rounded-xl shadow-lg">
+                <div class="flex gap-1 mb-4">
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    <i class="fas fa-star text-yellow-400 text-xl"></i>
+                </div>
+                <p class="text-gray-600 mb-6 italic">"Affordable prices and excellent service! I've tried other apps, but QuickMove offers the best value. The app is also very easy to use."</p>
+                <div class="flex items-center gap-4">
+                    <img src="https://i.pravatar.cc/100?img=5" alt="Emily Rodriguez" class="w-16 h-16 rounded-full">
+                    <div>
+                        <h4 class="font-bold text-gray-800">Emily Rodriguez</h4>
+                        <p class="text-gray-500">College Student</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section id="faq" class="py-20 bg-gray-50">
+    <div class="container mx-auto px-4 max-w-4xl">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-bold text-gray-800 mb-4">Frequently Asked Questions</h2>
+            <p class="text-xl text-gray-600">Find answers to common questions</p>
+        </div>
+        <div class="space-y-4">
+            <!-- FAQ 1 -->
+            <div class="faq-item bg-white rounded-lg shadow-md overflow-hidden">
+                <button class="faq-question w-full text-left p-6 flex justify-between items-center hover:bg-gray-50 transition">
+                    <h3 class="text-xl font-semibold text-gray-800">How do I book a ride with QuickMove?</h3>
+                    <i class="fas fa-chevron-down text-primary text-xl"></i>
+                </button>
+                <div class="faq-answer max-h-0 overflow-hidden transition-all duration-300">
+                    <p class="p-6 pt-0 text-gray-600">Booking a ride is simple! Download the QuickMove app, create an account, enter your destination, and tap "Book Now". A nearby driver will be assigned to you within seconds.</p>
+                </div>
+            </div>
+            <!-- FAQ 2 -->
+            <div class="faq-item bg-white rounded-lg shadow-md overflow-hidden">
+                <button class="faq-question w-full text-left p-6 flex justify-between items-center hover:bg-gray-50 transition">
+                    <h3 class="text-xl font-semibold text-gray-800">What payment methods do you accept?</h3>
+                    <i class="fas fa-chevron-down text-primary text-xl"></i>
+                </button>
+                <div class="faq-answer max-h-0 overflow-hidden transition-all duration-300">
+                    <p class="p-6 pt-0 text-gray-600">We accept multiple payment methods including cash, credit/debit cards, and popular digital wallets like PayPal, Apple Pay, and Google Pay for your convenience.</p>
+                </div>
+            </div>
+            <!-- FAQ 3 -->
+            <div class="faq-item bg-white rounded-lg shadow-md overflow-hidden">
+                <button class="faq-question w-full text-left p-6 flex justify-between items-center hover:bg-gray-50 transition">
+                    <h3 class="text-xl font-semibold text-gray-800">How are the fares calculated?</h3>
+                    <i class="fas fa-chevron-down text-primary text-xl"></i>
+                </button>
+                <div class="faq-answer max-h-0 overflow-hidden transition-all duration-300">
+                    <p class="p-6 pt-0 text-gray-600">Our fares are calculated based on distance, time, and current demand. You'll see the estimated fare before confirming your booking. No hidden charges!</p>
+                </div>
+            </div>
+            <!-- FAQ 4 -->
+            <div class="faq-item bg-white rounded-lg shadow-md overflow-hidden">
+                <button class="faq-question w-full text-left p-6 flex justify-between items-center hover:bg-gray-50 transition">
+                    <h3 class="text-xl font-semibold text-gray-800">Is QuickMove available 24/7?</h3>
+                    <i class="fas fa-chevron-down text-primary text-xl"></i>
+                </button>
+                <div class="faq-answer max-h-0 overflow-hidden transition-all duration-300">
+                    <p class="p-6 pt-0 text-gray-600">Yes! QuickMove operates 24 hours a day, 7 days a week. Whether it's early morning or late night, we're here to serve you.</p>
+                </div>
+            </div>
+            <!-- FAQ 5 -->
+            <div class="faq-item bg-white rounded-lg shadow-md overflow-hidden">
+                <button class="faq-question w-full text-left p-6 flex justify-between items-center hover:bg-gray-50 transition">
+                    <h3 class="text-xl font-semibold text-gray-800">How can I become a QuickMove driver?</h3>
+                    <i class="fas fa-chevron-down text-primary text-xl"></i>
+                </button>
+                <div class="faq-answer max-h-0 overflow-hidden transition-all duration-300">
+                    <p class="p-6 pt-0 text-gray-600">To become a driver, you need a valid driver's license, vehicle registration, insurance, and must pass our background check. Apply through our website or app to get started.</p>
+                </div>
+            </div>
+            <!-- FAQ 6 -->
+            <div class="faq-item bg-white rounded-lg shadow-md overflow-hidden">
+                <button class="faq-question w-full text-left p-6 flex justify-between items-center hover:bg-gray-50 transition">
+                    <h3 class="text-xl font-semibold text-gray-800">What safety measures does QuickMove implement?</h3>
+                    <i class="fas fa-chevron-down text-primary text-xl"></i>
+                </button>
+                <div class="faq-answer max-h-0 overflow-hidden transition-all duration-300">
+                    <p class="p-6 pt-0 text-gray-600">We conduct thorough background checks on all drivers, provide real-time GPS tracking, offer in-app emergency assistance, and allow ride sharing with friends and family for added security.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact Section -->
+<section id="contact" class="py-20 bg-white">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-bold text-gray-800 mb-4">Get In Touch</h2>
+            <p class="text-xl text-gray-600">We'd love to hear from you</p>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+            <!-- Contact Info 1 -->
+            <div class="flex flex-col items-center text-center p-6 bg-gray-50 rounded-xl shadow-lg hover:shadow-xl transition">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
+                    <i class="fas fa-map-marker-alt text-2xl text-white"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Address</h3>
+                <p class="text-gray-600">123 QuickMove Street, Tech City, TC 12345</p>
+            </div>
+            <!-- Contact Info 2 -->
+            <div class="flex flex-col items-center text-center p-6 bg-gray-50 rounded-xl shadow-lg hover:shadow-xl transition">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
+                    <i class="fas fa-phone text-2xl text-white"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Phone</h3>
+                <p class="text-gray-600">+1 (555) 123-4567</p>
+            </div>
+            <!-- Contact Info 3 -->
+            <div class="flex flex-col items-center text-center p-6 bg-gray-50 rounded-xl shadow-lg hover:shadow-xl transition">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
+                    <i class="fas fa-envelope text-2xl text-white"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Email</h3>
+                <p class="text-gray-600">support@quickmove.com</p>
+            </div>
+            <!-- Contact Info 4 -->
+            <div class="flex flex-col items-center text-center p-6 bg-gray-50 rounded-xl shadow-lg hover:shadow-xl transition">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
+                    <i class="fas fa-clock text-2xl text-white"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Working Hours</h3>
+                <p class="text-gray-600">24/7 Customer Support</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-gray-900 text-white py-12">
+    <div class="container mx-auto px-4">
+        <div class="grid md:grid-cols-3 gap-8 mb-8">
+            <!-- Footer Section 1 -->
+            <div>
+                <div class="flex items-center gap-3 mb-4">
+                    <i class="fas fa-car text-3xl text-primary"></i>
+                    <span class="text-2xl font-bold">QuickMove</span>
+                </div>
+                <p class="text-gray-400 mb-4">Your reliable ride-hailing service for safe, fast, and affordable transportation.</p>
+                <div class="flex gap-4">
+                    <a href="#" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition">
+                        <i class="fab fa-facebook"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition">
+                        <i class="fab fa-linkedin"></i>
+                    </a>
+                </div>
+            </div>
+            <!-- Footer Section 2 -->
+            <div>
+                <h3 class="text-xl font-bold mb-4">Quick Links</h3>
+                <ul class="space-y-2">
+                    <li><a href="#home" class="text-gray-400 hover:text-primary transition">Home</a></li>
+                    <li><a href="#about" class="text-gray-400 hover:text-primary transition">About Us</a></li>
+                    <li><a href="#features" class="text-gray-400 hover:text-primary transition">Features</a></li>
+                    <li><a href="#testimonials" class="text-gray-400 hover:text-primary transition">Testimonials</a></li>
+                </ul>
+            </div>
+            <!-- Footer Section 3 -->
+            <div>
+                <h3 class="text-xl font-bold mb-4">Support</h3>
+                <ul class="space-y-2">
+                    <li><a href="#faq" class="text-gray-400 hover:text-primary transition">FAQ</a></li>
+                    <li><a href="#contact" class="text-gray-400 hover:text-primary transition">Contact Us</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-primary transition">Privacy Policy</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-primary transition">Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="border-t border-gray-800 pt-8 text-center">
+            <p class="text-gray-400">&copy; 2025 QuickMove. All rights reserved.</p>
+        </div>
+    </div>
+</footer>
+
+<!-- Minimal JavaScript for mobile menu and FAQ accordion only -->
+<script>
+    // Mobile Menu Toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+
+    mobileMenuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+        const icon = mobileMenuBtn.querySelector('i');
+        if (mobileMenu.classList.contains('hidden')) {
+            icon.classList.remove('fa-times');
+            icon.classList.add('fa-bars');
+        } else {
+            icon.classList.remove('fa-bars');
+            icon.classList.add('fa-times');
+        }
+    });
+
+    // Close mobile menu when clicking on a link
+    document.querySelectorAll('#mobileMenu a').forEach(link => {
+        link.addEventListener('click', () => {
+            mobileMenu.classList.add('hidden');
+            const icon = mobileMenuBtn.querySelector('i');
+            icon.classList.remove('fa-times');
+            icon.classList.add('fa-bars');
+        });
+    });
+
+    // FAQ Accordion
+    document.querySelectorAll('.faq-question').forEach(button => {
+        button.addEventListener('click', () => {
+            const faqItem = button.parentElement;
+            const answer = faqItem.querySelector('.faq-answer');
+            const icon = button.querySelector('i');
+
+            // Close all other FAQs
+            document.querySelectorAll('.faq-item').forEach(item => {
+                if (item !== faqItem) {
+                    item.querySelector('.faq-answer').style.maxHeight = '0';
+                    item.querySelector('i').classList.remove('fa-chevron-up');
+                    item.querySelector('i').classList.add('fa-chevron-down');
+                }
+            });
+
+            // Toggle current FAQ
+            if (answer.style.maxHeight && answer.style.maxHeight !== '0px') {
+                answer.style.maxHeight = '0';
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            } else {
+                answer.style.maxHeight = answer.scrollHeight + 'px';
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            }
+        });
+    });
+</script>
+</body>
+</html>

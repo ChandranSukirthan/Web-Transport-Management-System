@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>QuickMove — Rider Tracking</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <style>
+    #rideMap { height: 520px; border-radius: 12px; overflow: hidden; }
+    .status-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
+    .status-requested { background:#64748b; }
+    .status-accepted { background:#2563eb; }
+    .status-ontrip { background:#22c55e; }
+    .status-error { background:#ef4444; }
+    .driver-icon { width: 26px; height: 26px; background:#2563eb; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,0.3); }
+    .dropoff-icon { width: 24px; height: 24px; background:#7c3aed; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,0.3); font-size:14px; }
+    .you-icon { width: 26px; height: 26px; background:#22c55e; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,0.3); }
+  </style>
+</head>
+<body class="bg-white text-slate-800">
+  <header class="border-b border-slate-200 bg-white/80 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/ride-booking.html" class="text-xl font-bold text-orange-600">QuickMove</a>
+      <a href="/ride-booking.html" class="text-sm font-medium text-orange-600 hover:text-orange-700">Book a ride</a>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <div class="flex items-baseline justify-between mb-4">
+      <h1 class="text-2xl md:text-3xl font-bold text-orange-600">Rider Tracking</h1>
+      <p class="text-slate-500 text-sm">Live driver updates </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <!-- Map -->
+      <div class="lg:col-span-2">
+        <div id="rideMap" class="border border-slate-200 shadow-sm"></div>
+      </div>
+
+      <!-- Side panel -->
+      <aside class="rounded-xl border border-slate-200 p-4 shadow-sm">
+        <h2 class="text-lg font-semibold mb-3">Connection</h2>
+        <div class="flex items-center mb-3 text-sm">
+          <span id="connDot" class="status-dot status-requested"></span>
+          <span id="connText" class="text-slate-600">Connecting…</span>
+        </div>
+        <div class="space-y-2 text-sm">
+          <div class="text-slate-500">Driver topic</div>
+          <div id="topicDriver" class="font-mono break-all text-slate-800">—</div>
+          <div class="text-slate-500 pt-2">Rider topic</div>
+          <div id="topicRider" class="font-mono break-all text-slate-800">—</div>
+        </div>
+        <div class="mt-4">
+          <div class="text-slate-500 text-sm">Last driver location</div>
+          <div id="lastDriverText" class="text-xl font-semibold text-slate-800">—</div>
+        </div>
+        <div class="mt-5">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input id="shareSwitch" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500" />
+            <span class="text-sm text-slate-700">Share my location to driver</span>
+          </label>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    (function(){
+      // Config: Defaults (override via globals if needed)
+      const MQTT_URL = window.MQTT_URL || 'wss://355bf2c4e74f4d59a6d6fd43c1b98ab1.s1.eu.hivemq.cloud:8884/mqtt';
+      const MQTT_USERNAME = window.MQTT_USERNAME || 'rdwij';
+      const MQTT_PASSWORD = window.MQTT_PASSWORD || 'Password1';
+      const DRIVER_TOPIC_TEMPLATE = window.MQTT_DRIVER_TOPIC || 'rides/{id}/driver';
+      const RIDER_TOPIC_TEMPLATE  = window.MQTT_RIDER_TOPIC  || 'rides/{id}/rider';
+
+      function getQuery(){ const p = new URLSearchParams(location.search); return Object.fromEntries(p.entries()); }
+      const qp = getQuery();
+      const rideId = qp.rideId || 'DEMO';
+      const autoShare = !!qp.riderId;
+
+      function parseLatLng(str){
+        if(!str || typeof str !== 'string') return null;
+        const parts = str.split(',').map(s=>s.trim()); if(parts.length !== 2) return null;
+        const lat = parseFloat(parts[0]); const lng = parseFloat(parts[1]);
+        if(Number.isNaN(lat) || Number.isNaN(lng)) return null; return { lat, lng };
+      }
+      const dropoffFromSingle = parseLatLng(qp.dropoff);
+      const dropoffFromPair = (qp.dropoffLat && qp.dropoffLng) ? { lat: parseFloat(qp.dropoffLat), lng: parseFloat(qp.dropoffLng) } : null;
+      const dropoff = dropoffFromSingle || dropoffFromPair || null;
+      const dropoffLabel = qp.dropoffLabel || qp.dropoffAddress || null;
+
+      // UI elements
+      const connDot = document.getElementById('connDot');
+      const connText = document.getElementById('connText');
+      const topicDriverEl = document.getElementById('topicDriver');
+      const topicRiderEl = document.getElementById('topicRider');
+      const lastDriverText = document.getElementById('lastDriverText');
+      const shareSwitch = document.getElementById('shareSwitch');
+
+      const driverTopic = (DRIVER_TOPIC_TEMPLATE||'').replace('{id}', rideId);
+      const riderTopic  = (RIDER_TOPIC_TEMPLATE||'').replace('{id}', rideId);
+      topicDriverEl.textContent = driverTopic;
+      topicRiderEl.textContent = riderTopic;
+
+      // Helpers for session create/accept
+      async function fetchJSON(url, opts){ const res = await fetch(url, opts); if(!res.ok) throw new Error(await res.text()); return res.json(); }
+      async function ensureSession(){
+        try{
+          const ride = await fetchJSON(`/api/rides/${encodeURIComponent(rideId)}`);
+          const driverUserId = ride && ride.driverId ? ride.driverId : null;
+          if(!driverUserId) { console.warn('No driver assigned; skip session'); return; }
+          const driver = await fetchJSON(`/api/drivers/user/${encodeURIComponent(driverUserId)}`);
+          if(!driver || !driver.id) { console.warn('Driver not found by userId'); return; }
+          const payload = { rideId: Number(rideId), driverId: Number(driver.id), riderUserId: ride.userId, createdBy: 'rider' };
+          try{ await fetchJSON('/api/tracking-sessions', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }); }catch(e){ console.warn('Session create failed', e); }
+        }catch(e){ console.warn('ensureSession error', e); }
+      }
+
+      // Map
+      let map, driverMarker, dropoffMarker, youMarker; let fitDone = false;
+      function initMap(){
+        map = L.map('rideMap', { scrollWheelZoom: true });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+        map.setView([20,0], 2);
+        if(dropoff && typeof dropoff.lat==='number' && typeof dropoff.lng==='number'){
+          const icon = L.divIcon({ className:'', html:'<div class="dropoff-icon">🏁</div>', iconSize:[24,24], iconAnchor:[12,12] });
+          const latlng = [dropoff.lat, dropoff.lng];
+          dropoffMarker = L.marker(latlng, { icon }).addTo(map);
+          const tt = `<div><strong>Dropoff</strong>${dropoffLabel? `<br>${dropoffLabel}`:''}<br>${dropoff.lat.toFixed(5)}, ${dropoff.lng.toFixed(5)}</div>`;
+          dropoffMarker.bindTooltip(tt, { direction: 'top' });
+          try { map.setView(latlng, 14); } catch(_){}
+        }
+      }
+      function setDriverMarker(pos, ts){
+        if(!pos) return; const latlng=[pos.lat,pos.lng];
+        const html = `<div><strong>Driver</strong><br>${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}${ts? `<br>${new Date(ts).toLocaleTimeString()}`:''}</div>`;
+        if(driverMarker){ driverMarker.setLatLng(latlng); const t=driverMarker.getTooltip(); if(t) t.setContent(html); else driverMarker.bindTooltip(html,{direction:'top'}); }
+        else { const icon=L.divIcon({className:'', html:'<div class="driver-icon">🚗</div>', iconSize:[26,26], iconAnchor:[13,13]}); driverMarker=L.marker(latlng,{icon}).addTo(map); driverMarker.bindTooltip(html,{direction:'top'}); }
+        if((dropoffMarker || youMarker) && !fitDone){ try{ const pts=[]; if(driverMarker) pts.push(driverMarker.getLatLng()); if(dropoffMarker) pts.push(dropoffMarker.getLatLng()); if(youMarker) pts.push(youMarker.getLatLng()); if(pts.length>=2){ map.fitBounds(L.latLngBounds(pts), { padding:[30,30], maxZoom:16 }); fitDone=true; } }catch(_){} }
+        else if(!dropoffMarker && !youMarker){ try{ map.setView(latlng, Math.max(13, map.getZoom())); }catch(_){} }
+      }
+      function setYouMarker(pos, ts){
+        if(!pos) return; const latlng=[pos.lat,pos.lng];
+        const html = `<div><strong>You (Rider)</strong><br>${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}${ts? `<br>${new Date(ts).toLocaleTimeString()}`:''}</div>`;
+        if(youMarker){ youMarker.setLatLng(latlng); const t=youMarker.getTooltip(); if(t) t.setContent(html); else youMarker.bindTooltip(html,{direction:'top'}); }
+        else { const icon=L.divIcon({className:'', html:'<div class="you-icon">🧍</div>', iconSize:[26,26], iconAnchor:[13,13]}); youMarker=L.marker(latlng,{icon}).addTo(map); youMarker.bindTooltip(html,{direction:'top'}); }
+        if((driverMarker || dropoffMarker) && !fitDone){ try{ const pts=[]; if(driverMarker) pts.push(driverMarker.getLatLng()); if(dropoffMarker) pts.push(dropoffMarker.getLatLng()); if(youMarker) pts.push(youMarker.getLatLng()); if(pts.length>=2){ map.fitBounds(L.latLngBounds(pts), { padding:[30,30], maxZoom:16 }); fitDone=true; } }catch(_){} }
+        else if(!driverMarker && !dropoffMarker){ try{ map.setView(latlng, Math.max(13, map.getZoom())); }catch(_){} }
+      }
+
+      function setConn(status, text){ connText.textContent = text; connDot.className = 'status-dot ' + (status==='ok' ? 'status-ontrip' : status==='err' ? 'status-error' : 'status-requested'); }
+
+      initMap();
+
+      const clientId = `ride-ui-${rideId}-${Math.random().toString(16).slice(2,8)}`;
+      const options = { clientId, clean:true, reconnectPeriod:2000, keepalive:60, username:MQTT_USERNAME, password:MQTT_PASSWORD };
+      let client; try{ client = mqtt.connect(MQTT_URL, options); }catch(e){ setConn('err','Connect error'); }
+
+      let geoWatchId=null;
+      function stopShare(){ if(geoWatchId!=null){ navigator.geolocation.clearWatch(geoWatchId); geoWatchId=null; } }
+      function startShare(){
+        if(!('geolocation' in navigator)){ alert('Geolocation not supported'); shareSwitch.checked=false; return; }
+        ensureSession().catch(()=>{});
+        geoWatchId = navigator.geolocation.watchPosition((pos)=>{
+          const lat=pos.coords.latitude, lng=pos.coords.longitude, ts=Date.now();
+          const payload = JSON.stringify({ lat, lng, ts, role:'rider', rideId });
+          try{ client && client.publish(riderTopic, payload, { qos:0, retain:false }); }catch(_){ }
+          setYouMarker({ lat, lng }, ts);
+        }, (err)=>{ alert('Unable to access your location: ' + (err?.message||'Permission denied or unavailable')); shareSwitch.checked=false; stopShare(); }, { enableHighAccuracy:true, maximumAge:10000, timeout:10000 });
+      }
+      shareSwitch.addEventListener('change', function(){ if(shareSwitch.checked) startShare(); else stopShare(); });
+
+      if(client){
+        client.on('connect', ()=>{
+          setConn('ok','Connected');
+          try{ client.subscribe(driverTopic, { qos:0 }); }catch(_){ }
+          if(autoShare){ try{ shareSwitch.checked=true; startShare(); }catch(_){ } }
+        });
+        client.on('reconnect', ()=> setConn('wait','Reconnecting…'));
+        client.on('close', ()=> setConn('wait','Disconnected'));
+        client.on('error', ()=> setConn('err','Connection error'));
+        client.on('message', (topic, message)=>{
+          if(topic !== driverTopic) return;
+          try{ const data = JSON.parse(message.toString()); if(typeof data.lat!=='number'||typeof data.lng!=='number') return; lastDriverText.textContent = `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}${data.ts? ' • ' + new Date(data.ts).toLocaleTimeString():''}`; setDriverMarker({ lat:data.lat, lng:data.lng }, data.ts); }catch(_){ }
+        });
+      }
+
+      window.addEventListener('beforeunload', ()=>{ try{ stopShare(); client && client.end(true); }catch(_){ } });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QuickMove — Payment</title>
+  <style>
+    :root{
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --primary: #ff6a00; /* project orange */
+      --accent: #16a085;
+      --muted: #6b7280;
+      --danger: #e06a6a;
+      --shadow: rgba(21,32,43,0.06);
+      --radius: 10px;
+    }
+
+    body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 28px; background: var(--bg); color: #102027; }
+    .container { max-width: 920px; margin: 0 auto; }
+
+    .header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+    h1 { margin:0; font-size:22px; letter-spacing:0.2px; color:var(--primary); }
+    .muted { color:var(--muted); margin-bottom:12px; }
+
+    .card { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: 0 8px 24px var(--shadow); border: 1px solid rgba(16,32,40,0.04); }
+
+    .form-grid { display:grid; grid-template-columns: 160px 1fr; gap:12px 16px; align-items:center; }
+    .form-grid .full { grid-column: 1 / -1; }
+    label { font-weight:600; font-size:14px; color:#0b2540; }
+    input[type="text"], input[type="number"], select { width:100%; padding:10px 12px; border:1px solid rgba(15,23,42,0.08); border-radius:8px; background: #fff; font-size:14px; box-sizing:border-box; }
+
+    .input-row { display:flex; gap:12px; align-items:center; }
+    .small { width:120px; }
+
+    .actions { display:flex; gap:10px; align-items:center; }
+    button { background: var(--primary); color:#fff; border: none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600; transition: transform .06s ease, box-shadow .06s ease; }
+    button.secondary { background: #fff; color:var(--primary); border:1px solid rgba(30,115,255,0.12); }
+    button.secondary:hover{ box-shadow: 0 6px 18px rgba(30,115,255,0.06); }
+    button:active{ transform: translateY(1px); }
+
+    #confirmBtn { background: var(--accent); }
+    #connectBtn { background: var(--primary); }
+
+    hr { border: none; border-top: 1px dashed rgba(16,32,40,0.06); margin:16px 0; }
+
+    #connectedBox { display:none; margin-top:10px; }
+    #cardFields { display:block; }
+
+    .status { margin-top:12px; padding:12px; border-radius:8px; font-weight:600; }
+    .status.pending { background:#fff7e6; color:#8a6d00; }
+    .status.success { background:#e8fbf3; color: #0b6a45; }
+    .status.error { background:#fff0f0; color: #8a1f1f; }
+
+    pre { background: #fbfdff; padding:12px; border-radius:8px; overflow:auto; border:1px solid rgba(10,20,40,0.03); }
+
+    @media (max-width:720px){ .form-grid { grid-template-columns: 1fr; } label { margin-bottom:6px; } .header { flex-direction:column; align-items:flex-start; gap:8px; } .input-row { flex-direction:column; align-items:stretch; } .small { width:100%; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Payment</h1>
+      <div class="muted">Securely confirm ride payments and watch live updates</div>
+    </div>
+
+    <div class="card">
+      <p class="muted">Enter the ride id to subscribe to real-time payment updates. You can confirm a payment (CARD or MANUAL).</p>
+
+      <div class="form-grid" style="margin-top:10px;">
+        <label for="rideId">Ride ID</label>
+        <div class="input-row">
+          <input id="rideId" type="number" placeholder="e.g. 123" />
+          <div class="actions" style="margin-left:auto;">
+            <button id="connectBtn" type="button">Connect</button>
+            <button id="disconnectBtn" type="button" class="secondary" style="display:none;">Disconnect</button>
+          </div>
+        </div>
+
+        <div class="full">
+          <hr />
+        </div>
+
+        <div id="connectedBox" class="full">
+          <div class="form-grid" style="align-items:center;">
+            <label for="method">Method</label>
+            <select id="method">
+              <option value="CARD">CARD</option>
+              <option value="MANUAL">MANUAL (Cash)</option>
+            </select>
+
+            <label for="amount">Amount</label>
+            <input id="amount" type="number" step="0.01" placeholder="0.00" />
+
+            <div id="cardFields" class="full">
+              <div style="display:grid; grid-template-columns: 1fr 140px; gap:12px;">
+                <div>
+                  <label for="cardNumber">Card number</label>
+                  <input id="cardNumber" type="text" maxlength="19" placeholder="4242 4242 4242 4242" />
+                </div>
+                <div>
+                  <label for="cvc">CVC</label>
+                  <input id="cvc" type="text" maxlength="4" placeholder="123" />
+                </div>
+              </div>
+            </div>
+
+            <div class="full">
+              <div class="actions" style="justify-content:flex-start;">
+                <button id="confirmBtn" type="button">Confirm Payment</button>
+                <button id="clearBtn" type="button" class="secondary">Clear</button>
+              </div>
+            </div>
+
+            <div class="full">
+              <div id="statusBox"></div>
+            </div>
+
+            <div class="full">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+                <div style="flex:1; margin-right:8px;">
+                  <button id="copyBtn" class="secondary" style="width:100%">Copy Payload</button>
+                </div>
+                <div style="flex:1;">
+                  <button id="jsonBtn" class="secondary" style="width:100%">JSON View</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="full">
+              <div style="display:none;" id="payloadBox">
+                <h3 style="margin:8px 0 6px 0;">Payload</h3>
+                <pre id="payloadData"></pre>
+              </div>
+            </div>
+
+            <div class="full">
+              <h3 style="margin:8px 0 6px 0;">Latest payment update</h3>
+              <pre id="paymentUpdate">(no updates yet)</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <script>
+    let stompClient = null;
+    let currentSubscription = null;
+
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const rideIdInput = document.getElementById('rideId');
+    const connectedBox = document.getElementById('connectedBox');
+    const paymentUpdate = document.getElementById('paymentUpdate');
+    const statusBox = document.getElementById('statusBox');
+    const methodSelect = document.getElementById('method');
+    const cardFields = document.getElementById('cardFields');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const payloadBox = document.getElementById('payloadBox');
+    const payloadData = document.getElementById('payloadData');
+
+    (function prefillFromQuery(){
+      try{
+        const p = new URLSearchParams(location.search);
+        const rid = p.get('rideId');
+        const amt = p.get('amount');
+        if(rid){ rideIdInput.value = rid; }
+        if(amt){ document.getElementById('amount').value = amt; }
+        // Use the helper rather than directly simulating a click to make auto-connect more reliable
+        if(rid){ setTimeout(()=>{ connectToRide(Number(rid)); }, 200); }
+      }catch(_){ }
+    })();
+
+    function connectToRide(rideId) {
+      // set the input and trigger the same logic as a user pressing Connect
+      try { rideIdInput.value = rideId; } catch(_) {}
+      connectBtn.click();
+    }
+
+    function setStatus(type, message) {
+      statusBox.innerHTML = '';
+      const el = document.createElement('div');
+      el.className = 'status ' + type;
+      el.textContent = message;
+      statusBox.appendChild(el);
+    }
+
+    function pretty(obj) {
+      try { return JSON.stringify(obj, null, 2); } catch(e) { return String(obj); }
+    }
+
+    // Fetch existing payment by rideId and show it in the UI
+    async function fetchExistingPayment(rideId) {
+      if (!rideId) return null;
+      try {
+        const res = await fetch('/api/payments/ride/' + encodeURIComponent(rideId));
+        if (!res.ok) return null;
+        const json = await res.json();
+        // populate the UI with the returned payment
+        payloadData.textContent = pretty(json);
+        payloadBox.style.display = 'block';
+        paymentUpdate.textContent = pretty(json);
+        setStatus((json.status === 'SUCCESSFUL') ? 'success' : (json.status === 'PENDING' ? 'pending' : 'error'), 'Last update: ' + (json.status || 'unknown') + ' — amount: ' + (json.amount || 'N/A'));
+        // set amount input so confirm uses the same amount
+        if (json.amount) {
+          try { document.getElementById('amount').value = Number(json.amount).toFixed(2); } catch(_) {}
+        }
+        return json;
+      } catch (e) {
+        // ignore errors; simply return null
+        return null;
+      }
+    }
+
+    connectBtn.addEventListener('click', () => {
+      const id = rideIdInput.value && Number(rideIdInput.value);
+      if (!id) { alert('Enter a valid ride id'); return; }
+
+      if (stompClient) stompClient.disconnect();
+
+      const socket = new SockJS('/ws');
+      stompClient = Stomp.over(socket);
+      stompClient.debug = null;
+
+      stompClient.connect({}, async function(frame) {
+        connectedBox.style.display = 'block';
+        disconnectBtn.style.display = 'inline-block';
+        connectBtn.style.display = 'none';
+        setStatus('pending', 'Connected — subscribing to payment updates for ride ' + id);
+        const topic = '/topic/paymentUpdates/' + id;
+        if (currentSubscription) currentSubscription.unsubscribe();
+        currentSubscription = stompClient.subscribe(topic, function(message) {
+          const body = JSON.parse(message.body);
+          paymentUpdate.textContent = pretty(body);
+          setStatus((body.status === 'SUCCESSFUL') ? 'success' : (body.status === 'PENDING' ? 'pending' : 'error'), 'Last update: ' + (body.status || 'unknown') + ' — amount: ' + (body.amount || 'N/A'));
+          // also show the payload box with the latest message
+          payloadData.textContent = pretty(body);
+          payloadBox.style.display = 'block';
+        });
+
+        // After subscribing, fetch any existing payment record to populate UI immediately
+        try { await fetchExistingPayment(id); } catch(_) { /* ignore */ }
+      }, function(err){
+        setStatus('error', 'STOMP connect error: ' + err);
+      });
+    });
+
+    disconnectBtn.addEventListener('click', () => {
+      if (stompClient) { stompClient.disconnect(); stompClient = null; }
+      if (currentSubscription) { try { currentSubscription.unsubscribe(); } catch(e){} currentSubscription = null; }
+      connectedBox.style.display = 'none';
+      disconnectBtn.style.display = 'none';
+      connectBtn.style.display = 'inline-block';
+      setStatus('pending', 'Disconnected');
+      payloadBox.style.display = 'none';
+    });
+
+    methodSelect.addEventListener('change', () => {
+      if (methodSelect.value === 'CARD') cardFields.style.display = 'block'; else cardFields.style.display = 'none';
+    });
+    methodSelect.dispatchEvent(new Event('change'));
+
+    confirmBtn.addEventListener('click', () => {
+      const id = rideIdInput.value && Number(rideIdInput.value);
+      if (!id) { alert('Enter ride id'); return; }
+
+      const payload = {
+        rideId: id,
+        userId: 'rider-1',
+        driverId: null,
+        amount: Number(document.getElementById('amount').value) || 0,
+        method: document.getElementById('method').value,
+        vehicleType: 'car'
+      };
+
+      if (payload.method === 'CARD') {
+        const card = document.getElementById('cardNumber').value.replace(/\s+/g, '');
+        const cvc = document.getElementById('cvc').value;
+        payload.cardNumber = card;
+        payload.cvc = cvc;
+      }
+
+      setStatus('pending', 'Submitting payment confirmation...');
+
+      fetch('/api/payments/' + id + '/confirm', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(res => {
+        if (res.ok) return res.json().catch(()=>null);
+        return res.text().then(t => { throw new Error(t || 'Failed'); });
+      }).then(async data => {
+        setStatus('success', 'Payment submitted. Waiting for update...');
+        payloadData.textContent = pretty(payload);
+        payloadBox.style.display = 'block';
+        // fetch persisted payment to reflect stored values (and status)
+        try { await fetchExistingPayment(id); } catch(_) {}
+      }).catch(err => {
+        setStatus('error', 'Failed to submit payment: ' + err.message);
+      });
+    });
+
+    clearBtn.addEventListener('click', () => {
+      document.getElementById('cardNumber').value = '';
+      document.getElementById('cvc').value = '';
+      document.getElementById('amount').value = '';
+      paymentUpdate.textContent = '(no updates yet)';
+      statusBox.innerHTML = '';
+      payloadBox.style.display = 'none';
+    });
+
+    document.getElementById('jsonBtn').addEventListener('click', () => {
+      const id = rideIdInput.value && Number(rideIdInput.value);
+      if (!id) { alert('Enter ride id'); return; }
+      location.href = '/payments/json.html?rideId=' + id;
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const payload = payloadData.textContent;
+      if (!payload) { return; }
+      navigator.clipboard.writeText(payload).then(() => {
+        setStatus('success', 'Payload copied to clipboard');
+      }, err => {
+        setStatus('error', 'Failed to copy payload: ' + err.message);
+      });
+    });
+  </script>
+</body>
+</html>
