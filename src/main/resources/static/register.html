@@ -4,165 +4,150 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - QuickMove</title>
+    <link rel="stylesheet" href="/css/styles.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .bg-primary { background-color: var(--primary); }
+        .hover\:bg-primary-dark:hover { background-color: var(--primary-dark); }
+        .text-primary { color: var(--primary); }
+        .bg-secondary { background-color: var(--muted); }
+    </style>
 </head>
 <body class="p-8 bg-gray-50">
-<div class="max-w-xl mx-auto bg-white p-8 rounded shadow">
-    <h1 class="text-2xl font-bold mb-4">Create an account</h1>
 
-    <div class="mb-4">
+<!-- Home button: redirects to index (top-right) -->
+<a href="/index.html" class="home-btn">Home</a>
+
+<div class="container">
+  <div class="card">
+    <div class="header">
+      <div class="logo">QM</div>
+      <div>
+        <div class="title">Create an account</div>
+        <div class="subtitle small">Sign up as a customer or register as a driver</div>
+      </div>
+    </div>
+    <h1 class="text-2xl font-bold mb-6">&nbsp;</h1>
+
+    <div class="mb-6">
         <label class="inline-flex items-center">
-            <input id="roleCustomer" type="radio" name="role" value="CUSTOMER" checked class="mr-2">
+            <input type="radio" name="role" value="CUSTOMER" checked class="mr-2">
             <span>Customer</span>
         </label>
-        <label class="inline-flex items-center ml-6">
-            <input id="roleDriver" type="radio" name="role" value="DRIVER" class="mr-2">
+        <label class="inline-flex items-center ml-8">
+            <input type="radio" name="role" value="DRIVER" class="mr-2">
             <span>Driver</span>
         </label>
     </div>
 
-    <div id="customerForm">
-        <div class="mb-2">
-            <label for="custName" class="block text-sm font-medium text-gray-700 mb-1">Full name</label>
-            <input id="custName" type="text" placeholder="Full name" class="w-full p-2 border rounded">
+    <div class="space-y-4">
+        <div>
+            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <input id="name" type="text" placeholder="Full name" class="input focus-ring">
         </div>
-        <div class="mb-2">
-            <label for="custEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input id="custEmail" type="email" placeholder="Email" class="w-full p-2 border rounded">
+        <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input id="email" type="email" placeholder="you@example.com" class="input focus-ring">
         </div>
-        <div class="mb-4">
-            <label for="custPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input id="custPassword" type="password" placeholder="Password" class="w-full p-2 border rounded">
+        <div>
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input id="password" type="password" placeholder="••••••••" class="input focus-ring">
         </div>
-
-        <!-- Customer submit button: only visible when Customer role selected and all fields are filled -->
-        <button id="custRegisterBtn" class="w-full bg-primary text-white py-2 rounded" style="display:none;">Register as Customer</button>
-        <!-- Driver continue button: visible when Driver role selected to go to driver details page (prefilled) -->
-        <button id="driverContinueBtn" class="w-full bg-secondary text-white py-2 rounded mt-2" style="display:none; background-color:#6b7280;">Continue to Driver Details</button>
     </div>
 
-    <div id="driverNote" class="hidden mt-4 text-sm text-gray-600">
-        Drivers should complete additional details on the driver page after basic registration.
+    <div id="customerActions" class="mt-6">
+        <button id="customerRegisterBtn" class="primary-btn">Register as Customer</button>
     </div>
 
-    <div class="mt-4 text-center">
-        <a href="/driver-details.html" class="text-primary">Go to Driver registration page</a>
+    <div id="driverActions" class="mt-6 hidden">
+        <button id="continueToDriverBtn" class="primary-btn" style="background:var(--muted);">Continue to Driver Details →</button>
     </div>
 
-    <div id="message" class="mt-4"></div>
+    <div id="message" class="mt-6 text-center"></div>
 
-    <div class="mt-4 text-sm text-gray-600">Already have an account? <a href="/login" class="text-primary">Login</a></div>
+    <div class="mt-6 text-center text-sm text-gray-600">
+        Already have an account? <a href="/login" class="text-primary font-medium">Login</a>
+    </div>
+  </div>
 </div>
 
 <script>
-    const roleCustomer = document.getElementById('roleCustomer');
-    const roleDriver = document.getElementById('roleDriver');
-    const driverNote = document.getElementById('driverNote');
+    const roleRadios = document.querySelectorAll('input[name="role"]');
+    const customerActions = document.getElementById('customerActions');
+    const driverActions = document.getElementById('driverActions');
+    const customerBtn = document.getElementById('customerRegisterBtn');
+    const continueBtn = document.getElementById('continueToDriverBtn');
     const message = document.getElementById('message');
-    const custRegisterBtn = document.getElementById('custRegisterBtn');
-    const custName = document.getElementById('custName');
-    const custEmail = document.getElementById('custEmail');
-    const custPassword = document.getElementById('custPassword');
-    const driverContinueBtn = document.getElementById('driverContinueBtn');
 
-    function updateView() {
-        if (roleDriver.checked) {
-            driverNote.classList.remove('hidden');
-            // hide customer submit when driver selected
-            custRegisterBtn.style.display = 'none';
-            // show driver continue button
-            driverContinueBtn.style.display = 'block';
-        } else {
-            driverNote.classList.add('hidden');
-            custRegisterBtn.style.display = 'block';
-            driverContinueBtn.style.display = 'none';
-        }
-        checkCustomerForm();
+    function updateRoleView() {
+        const isDriver = document.querySelector('input[name="role"]:checked').value === 'DRIVER';
+        customerActions.classList.toggle('hidden', isDriver);
+        driverActions.classList.toggle('hidden', !isDriver);
     }
 
-    function checkCustomerForm() {
-        // enable submit only when all fields have values and Customer role selected
-        const filled = custName.value.trim() !== '' && custEmail.value.trim() !== '' && custPassword.value.trim() !== '';
-        if (roleCustomer.checked && filled) {
-            custRegisterBtn.disabled = false;
-            custRegisterBtn.style.opacity = '1';
-        } else {
-            custRegisterBtn.disabled = true;
-            custRegisterBtn.style.opacity = '0.6';
-        }
+    function areFieldsFilled() {
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
+        return name && email && password;
     }
 
-    // Driver continue button handler
-    driverContinueBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        // ensure basic fields are filled before continuing
-        const name = custName.value.trim();
-        const email = custEmail.value.trim();
-        const password = custPassword.value.trim();
-        if (!name || !email || !password) {
-            message.innerHTML = '<div class="text-red-600">Please fill name, email and password before continuing to driver details.</div>';
-            return;
-        }
-        // store basic details in sessionStorage (avoids putting password in URL)
-        try {
-            sessionStorage.setItem('driverOnboard', JSON.stringify({name, email, password}));
-        } catch (err) {
-            // fallback to query params if sessionStorage unavailable
-            const qsName = encodeURIComponent(name);
-            const qsEmail = encodeURIComponent(email);
-            window.location.href = '/driver-details.html?name=' + qsName + '&email=' + qsEmail;
-            return;
-        }
-        // navigate to driver details page; the page will read sessionStorage
-        window.location.href = '/driver-details.html';
-    });
+    // Role switch
+    roleRadios.forEach(radio => radio.addEventListener('change', updateRoleView));
 
-    // live validation: call checkCustomerForm on input changes
-    custName.addEventListener('input', checkCustomerForm);
-    custEmail.addEventListener('input', checkCustomerForm);
-    custPassword.addEventListener('input', checkCustomerForm);
-
-    // Update view on role change (which also calls checkCustomerForm if needed)
-    roleCustomer.addEventListener('change', updateView);
-    roleDriver.addEventListener('change', updateView);
-
-    document.getElementById('custRegisterBtn').addEventListener('click', async (e) => {
-        e.preventDefault();
-        // If driver selected, redirect to driver details page
-        if (roleDriver.checked) {
-            // Preserve basic info via query params
-            const name = encodeURIComponent(document.getElementById('custName').value || '');
-            const email = encodeURIComponent(document.getElementById('custEmail').value || '');
-            window.location.href = '/driver-details.html?name=' + name + '&email=' + email;
+    // Customer Registration
+    customerBtn.addEventListener('click', async () => {
+        if (!areFieldsFilled()) {
+            message.innerHTML = '<p class="text-red-600">Please fill all fields</p>';
             return;
         }
 
-        // For Customer: proceed with registration
-        const name = document.getElementById('custName').value;
-        const email = document.getElementById('custEmail').value;
-        const password = document.getElementById('custPassword').value;
-        message.innerText = '';
+        const payload = {
+            name: document.getElementById('name').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value,
+            role: "CUSTOMER"
+        };
+
         try {
             const res = await fetch('/api/auth/register', {
                 method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({name, email, password})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
+
             if (!res.ok) {
-                message.innerHTML = '<div class="text-red-600">Error: ' + (data.error || JSON.stringify(data)) + '</div>';
+                message.innerHTML = `<p class="text-red-600">Error: ${data.error || 'Registration failed'}</p>`;
             } else {
-                // Show success message, then redirect to index page
-                message.innerHTML = '<div class="text-green-600">Successfully registered.</div>';
+                message.innerHTML = '<p class="text-green-600 font-medium">Successfully registered! Redirecting...</p>';
                 setTimeout(() => window.location.href = '/', 1500);
             }
-        } catch (e) {
-            message.innerHTML = '<div class="text-red-600">Network error</div>';
+        } catch (err) {
+            message.innerHTML = '<p class="text-red-600">Network error. Try again.</p>';
         }
     });
 
-    // Initialize UI state
-    updateView();
+    // Continue to Driver Details
+    continueBtn.addEventListener('click', () => {
+        if (!areFieldsFilled()) {
+            message.innerHTML = '<p class="text-red-600">Please fill name, email, and password first</p>';
+            return;
+        }
+
+        const data = {
+            name: document.getElementById('name').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value
+        };
+
+        // Store securely in sessionStorage
+        sessionStorage.setItem('pendingDriver', JSON.stringify(data));
+        window.location.href = '/driver-details.html';
+    });
+
+    // Initial setup
+    updateRoleView();
 </script>
 </body>
 </html>

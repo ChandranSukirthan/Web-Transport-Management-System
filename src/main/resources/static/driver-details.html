@@ -1,123 +1,110 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driver Registration - QuickMove</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Complete Driver Registration — QuickMove</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    /* Optional inline fallback if styles.css is missing */
+    .login-link {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255,255,255,0.95);
+      color: #3b82f6;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+      z-index: 10;
+    }
+    .login-link:hover {
+      background: #3b82f6;
+      color: white;
+      transform: translateY(-1px);
+    }
+    .container { position: relative; }
+  </style>
 </head>
-<body class="p-8 bg-gray-50">
-<div class="max-w-xl mx-auto bg-white p-8 rounded shadow">
-    <h1 class="text-2xl font-bold mb-4">Driver Registration</h1>
+<body>
+<div class="container">
 
-    <div id="basicFields">
-        <input id="name" type="text" placeholder="Full name" class="w-full p-2 border rounded mb-2">
-        <input id="email" type="email" placeholder="Email" class="w-full p-2 border rounded mb-2">
-        <input id="password" type="password" placeholder="Password" class="w-full p-2 border rounded mb-2">
+  <!-- Back to Login Button - Top Right -->
+  <a href="/login.html" class="login-link">
+    ← Back to Login
+  </a>
+
+  <div class="card">
+    <div class="header">
+      <div class="logo">QM</div>
+      <div>
+        <div class="title">Complete Driver Registration</div>
+        <div class="subtitle small">Finish your driver onboarding — provide vehicle details</div>
+      </div>
     </div>
 
-    <select id="vehicleType" class="w-full p-2 border rounded mb-2">
-        <option value="">Select vehicle type</option>
-        <option value="CAR">Car</option>
-        <option value="BIKE">Bike</option>
-        <option value="AUTO">Auto</option>
-    </select>
+    <div id="message"></div>
 
-    <input id="numberPlate" type="text" placeholder="Vehicle number plate" class="w-full p-2 border rounded mb-4">
-
-    <button id="driverRegisterBtn" class="w-full bg-primary text-white py-2 rounded">Register as Driver</button>
-
-    <div id="message" class="mt-4"></div>
-    <div id="summary" class="mt-6 hidden">
-        <h2 class="text-xl font-bold mb-2">Driver Details Submitted</h2>
-        <p class="mb-1">Vehicle Type: <span id="summaryVehicle" class="font-medium"></span></p>
-        <p class="mb-3">Number Plate: <span id="summaryPlate" class="font-medium"></span></p>
-        <div class="flex gap-2">
-            <a id="toAdminBtn" href="/admin/drivers" class="bg-blue-600 text-white px-4 py-2 rounded">Go to Admin Page</a>
-            <a id="toLoginBtn" href="/login" class="bg-gray-200 text-gray-800 px-4 py-2 rounded">Go to Login</a>
+    <form id="driverForm">
+      <div id="basicArea">
+        <div class="form-row">
+          <label class="label" for="name">Full name</label>
+          <input id="name" class="input" type="text" placeholder="Full name (from previous step)" readonly />
         </div>
+        <div class="form-row">
+          <label class="label" for="email">Email</label>
+          <input id="email" class="input" type="email" placeholder="you@example.com" readonly />
+        </div>
+        <div class="form-row">
+          <label class="label" for="password">Password</label>
+          <input id="password" class="input" type="password" placeholder="Choose a password" readonly style="display:none" />
+        </div>
+      </div>
+
+      <div id="vehicleArea">
+        <div class="form-row">
+          <label class="label" for="vehicleType">Vehicle Type</label>
+          <select id="vehicleType" class="input select" required>
+            <option value="">Choose vehicle type</option>
+            <option value="CAR">Car</option>
+            <option value="BIKE">Bike</option>
+            <option value="AUTO">Auto Rickshaw</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label class="label" for="numberPlate">Vehicle Number Plate</label>
+          <input id="numberPlate" class="input" type="text" placeholder="e.g. MH04 AB1234" required />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <button id="submitBtn" class="primary-btn" type="submit">Register as Driver</button>
+      </div>
+    </form>
+
+    <div id="summary" class="summary" style="display:none;">
+      <div class="success-icon">Checkmark</div>
+      <div class="title" style="margin:16px 0">Registration Complete!</div>
+      <div class="small">Your driver account is pending admin approval.</div>
+      <div style="margin-top:16px">
+        <div class="small">Vehicle type</div>
+        <div id="summaryVehicle" style="font-weight:700;margin-bottom:6px"></div>
+        <div class="small">Number plate</div>
+        <div id="summaryPlate" style="font-weight:700"></div>
+      </div>
+      <div style="margin-top:20px">
+        <a href="/login.html" class="primary-btn">Go to Login</a>
+      </div>
     </div>
-    <div class="mt-4 text-sm text-gray-600">Already registered? <a href="/login" class="text-primary">Login</a></div>
+
+  </div>
 </div>
 
-<script>
-    // Try to read onboarding data from sessionStorage (set by register.html)
-    let onboard = null;
-    try {
-        const raw = sessionStorage.getItem('driverOnboard');
-        if (raw) onboard = JSON.parse(raw);
-    } catch (e) {
-        onboard = null;
-    }
-
-    // Prefill from query params if sessionStorage not available
-    const params = new URLSearchParams(window.location.search);
-    const preName = params.get('name');
-    const preEmail = params.get('email');
-
-    const nameInput = document.getElementById('name');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const basicFields = document.getElementById('basicFields');
-    const message = document.getElementById('message');
-
-    if (onboard) {
-        // populate and hide basic inputs; user only sees vehicle fields
-        nameInput.value = onboard.name || '';
-        emailInput.value = onboard.email || '';
-        passwordInput.value = onboard.password || '';
-        // hide the basicFields container
-        basicFields.style.display = 'none';
-        // show a small note
-        message.innerHTML = '<div class="text-sm text-gray-700 mb-2">Basic details taken from your previous step.</div>';
-    } else {
-        if (preName) nameInput.value = decodeURIComponent(preName);
-        if (preEmail) emailInput.value = decodeURIComponent(preEmail);
-    }
-
-    document.getElementById('driverRegisterBtn').addEventListener('click', async () => {
-        // use onboard values if available, otherwise read from inputs
-        const name = (onboard && onboard.name) ? onboard.name : (nameInput.value || '').trim();
-        const email = (onboard && onboard.email) ? onboard.email : (emailInput.value || '').trim();
-        const password = (onboard && onboard.password) ? onboard.password : (passwordInput.value || '').trim();
-        const vehicleType = document.getElementById('vehicleType').value;
-        const numberPlate = document.getElementById('numberPlate').value.trim();
-
-        // simple client-side validation
-        if (!name || !email || !password || !vehicleType || !numberPlate) {
-            message.innerHTML = '<div class="text-red-600">Please complete all fields.</div>';
-            return;
-        }
-
-        message.innerText = '';
-        try {
-            const res = await fetch('/api/auth/driver/register', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({name, email, password, vehicleType, numberPlate})
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                message.innerHTML = '<div class="text-red-600">Error: ' + (data.error || JSON.stringify(data)) + '</div>';
-            } else {
-                // success: clear onboard data, hide form, show summary
-                try { sessionStorage.removeItem('driverOnboard'); } catch (e) {}
-                message.innerHTML = '<div class="text-green-600">Driver registered and pending approval by admin.</div>';
-                // hide the whole form area
-                basicFields.style.display = 'none';
-                document.getElementById('vehicleType').style.display = 'none';
-                document.getElementById('numberPlate').style.display = 'none';
-                document.getElementById('driverRegisterBtn').style.display = 'none';
-                document.getElementById('summaryVehicle').innerText = vehicleType;
-                document.getElementById('summaryPlate').innerText = numberPlate;
-                document.getElementById('summary').classList.remove('hidden');
-                // auto-redirect to admin page after 3s
-                setTimeout(() => { window.location.href = '/admin/drivers'; }, 3000);
-            }
-        } catch (e) {
-            message.innerHTML = '<div class="text-red-600">Network error</div>';
-        }
-    });
-</script>
+<script type="module" src="/js/driver-details-enhanced.js"></script>
 </body>
 </html>

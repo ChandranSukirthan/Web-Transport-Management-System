@@ -74,29 +74,53 @@ public class AuthController {
         if (name == null || email == null || password == null || vehicleType == null || numberPlate == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "name,email,password,vehicleType,numberPlate are required"));
         }
-        if (userRepository.findByEmail(email).isPresent()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "email already registered"));
-        }
-        User user = new User();
-        user.setName(name);
-        user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setRole("DRIVER");
-        user.setEnabled(false); // enabled after admin approval
-        User saved = userRepository.save(user);
 
-        Driver driver = new Driver();
-        driver.setName(name);
-        driver.setUserId(saved.getEmail());
-        driver.setVehicleType(vehicleType);
-        driver.setNumberPlate(numberPlate);
-        driver.setStatus("OFFLINE");
-        driver.setApproved(false);
-        Driver savedDriver = driverRepository.save(driver);
+        // If user already exists, don't fail — we will convert/update the user and create/update a Driver record
+        Optional<User> existingUserOpt = userRepository.findByEmail(email);
+        User savedUser;
+        if (existingUserOpt.isPresent()) {
+            User existing = existingUserOpt.get();
+            // Update role to DRIVER (promote customer to driver or keep driver)
+            existing.setRole("DRIVER");
+            // Update password if provided (we always have a password from the onboarding flow)
+            existing.setPassword(passwordEncoder.encode(password));
+            // Keep existing enabled flag (do not automatically disable a previously enabled customer)
+            savedUser = userRepository.save(existing);
+        } else {
+            User user = new User();
+            user.setName(name);
+            user.setEmail(email);
+            user.setPassword(passwordEncoder.encode(password));
+            user.setRole("DRIVER");
+            user.setEnabled(false); // enabled after admin approval for new driver accounts
+            savedUser = userRepository.save(user);
+        }
+
+        // Create or update Driver record linked by user email
+        Optional<Driver> existingDriverOpt = driverRepository.findByUserId(email);
+        Driver driverEntity;
+        if (existingDriverOpt.isPresent()) {
+            driverEntity = existingDriverOpt.get();
+            driverEntity.setName(name);
+            driverEntity.setVehicleType(vehicleType);
+            driverEntity.setNumberPlate(numberPlate);
+            driverEntity.setApproved(false); // mark pending approval when details change
+            driverEntity.setStatus("OFFLINE");
+            driverEntity = driverRepository.save(driverEntity);
+        } else {
+            Driver driver = new Driver();
+            driver.setName(name);
+            driver.setUserId(savedUser.getEmail());
+            driver.setVehicleType(vehicleType);
+            driver.setNumberPlate(numberPlate);
+            driver.setStatus("OFFLINE");
+            driver.setApproved(false);
+            driverEntity = driverRepository.save(driver);
+        }
 
         // avoid returning password
-        saved.setPassword(null);
-        return ResponseEntity.ok(Map.of("user", saved, "driver", savedDriver));
+        savedUser.setPassword(null);
+        return ResponseEntity.ok(Map.of("user", savedUser, "driver", driverEntity));
     }
 
     @GetMapping("/users")

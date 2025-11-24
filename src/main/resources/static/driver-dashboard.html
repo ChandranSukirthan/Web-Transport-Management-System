@@ -2,153 +2,213 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Driver Console</title>
+  <title>Driver Console — QuickMove</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Replace MQTT with SockJS + STOMP for server push -->
   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
-  <style>
-    .card { border: 1px solid #eee; border-radius: 12px; padding: 12px; background: #fff; }
-  </style>
 </head>
-<body class="p-6 bg-gray-50">
-  <div class="max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold text-orange-500 mb-4 text-center">Driver Console</h1>
-    <p id="status" class="text-center text-gray-600 mb-4">Connecting...</p>
-
-    <div id="requests" class="space-y-3"></div>
-
-    <template id="requestTpl">
-      <div class="card flex items-start justify-between">
-        <div>
-          <div class="text-sm text-gray-700"><span class="font-semibold">Ride ID:</span> <span data-field="id"></span></div>
-          <div class="text-sm text-gray-700"><span class="font-semibold">Pickup:</span> <span data-field="pickup"></span></div>
-          <div class="text-sm text-gray-700"><span class="font-semibold">Dropoff:</span> <span data-field="dropoff"></span></div>
-          <div class="text-sm text-gray-700"><span class="font-semibold">Distance:</span> <span data-field="distance"></span> km</div>
-          <div class="text-sm text-gray-700"><span class="font-semibold">ETA:</span> <span data-field="duration"></span> mins</div>
-          <div class="text-sm text-gray-700"><span class="font-semibold">Fare:</span> $<span data-field="fare"></span></div>
-        </div>
-        <div class="ml-4 flex flex-col gap-2">
-          <button class="acceptBtn bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md font-semibold">Accept</button>
-        </div>
+<body class="bg-gray-100 min-h-screen">
+<div class="flex">
+  <!-- Left Sidebar: Driver Profile -->
+  <div class="w-80 bg-white shadow-xl h-screen sticky top-0 p-6 border-r border-gray-200">
+    <div class="text-center mb-8">
+      <div class="w-24 h-24 bg-orange-500 text-white text-4xl font-bold rounded-full mx-auto flex items-center justify-center">
+        <span id="driverInitials">D</span>
       </div>
-    </template>
+      <h2 id="driverName" class="text-xl font-bold mt-4 text-gray-800">Loading...</h2>
+      <p id="driverEmail" class="text-sm text-gray-500">driver@quickmove.com</p>
+    </div>
+
+    <div class="space-y-5 text-sm">
+      <div class="flex justify-between">
+        <span class="text-gray-600">Status</span>
+        <span id="driverStatus" class="font-semibold text-orange-600">OFFLINE</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Vehicle</span>
+        <span id="driverVehicle" class="font-medium">—</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Plate No.</span>
+        <span id="driverPlate" class="font-medium uppercase">—</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Total Earnings</span>
+        <span id="driverEarnings" class="font-bold text-green-600">$0.00</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Rides Completed</span>
+        <span id="driverRidesCount" class="font-medium">0</span>
+      </div>
+    </div>
+
+    <div class="mt-10">
+      <button id="logoutBtn" class="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-3 rounded-lg transition">
+        Logout
+      </button>
+    </div>
   </div>
 
-  <script>
-    // Removed mqtt client; using STOMP now
-    const requestsEl = document.getElementById('requests');
-    const tpl = document.getElementById('requestTpl');
+  <!-- Main Content -->
+  <div class="flex-1 p-8">
+    <div class="max-w-4xl mx-auto">
+      <h1 class="text-3xl font-bold text-orange-600 mb-2">Driver Console</h1>
+      <p id="status" class="text-lg text-gray-600 mb-8">Connecting to server...</p>
 
-    let driverId = null; // resolved at runtime
-    const driverUserId = '1';
+      <div id="requests" class="space-y-5"></div>
 
-    function setStatus(text, cls) {
-      const el = document.getElementById('status');
-      el.textContent = text;
-      el.className = 'text-center mb-4 ' + (cls || 'text-gray-600');
-    }
+      <!-- No active requests -->
+      <div id="noRequests" class="text-center py-12 text-gray-500 hidden">
+        <p class="text-xl">No ride requests at the moment</p>
+        <p class="text-sm mt-2">You're all caught up! New requests will appear here instantly.</p>
+      </div>
+    </div>
+  </div>
+</div>
 
-    async function ensureDriverAvailable() {
-      try {
-        let driver = null;
-        const getRes = await fetch(`/api/drivers/user/${encodeURIComponent(driverUserId)}`);
-        if (getRes.ok) driver = await getRes.json();
-        if (!driver) {
-          const createRes = await fetch('/api/drivers', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: 'Driver 1', userId: driverUserId, vehicleType: 'car', numberPlate: 'ABC-123' })
-          });
-          if (!createRes.ok) throw new Error('Create driver failed');
-          driver = await createRes.json();
-        }
-        if (driver.status !== 'AVAILABLE') {
-          const putRes = await fetch(`/api/drivers/${driver.id}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: driver.name, userId: driver.userId, vehicleType: driver.vehicleType, numberPlate: driver.numberPlate, status: 'AVAILABLE' })
-          });
-          if (putRes.ok) driver = await putRes.json();
-        }
-        driverId = driver.id;
-      } catch (e) {
-        setStatus('Driver setup error: ' + e.message, 'text-red-600');
+<!-- Template for Ride Request Card -->
+<template id="requestTpl">
+  <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition">
+    <div class="flex justify-between items-start">
+      <div class="flex-1">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-sm font-semibold text-gray-500">Ride ID:</span>
+          <span data-field="id" class="font-mono text-orange-600"></span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div><strong>Pickup:</strong> <span data-field="pickup" class="text-gray-700"></span></div>
+          <div><strong>Dropoff:</strong> <span data-field="dropoff" class="text-gray-700"></span></div>
+          <div><strong>Distance:</strong> <span data-field="distance"></span> km</div>
+          <div><strong>ETA:</strong> <span data-field="duration"></span> mins</div>
+          <div class="text-lg font-bold text-green-600"><strong>Fare:</strong> $<span data-field="fare"></span></div>
+        </div>
+      </div>
+      <div class="ml-6">
+        <button class="acceptBtn bg-orange-500 hover:bg-orange-600 text-white font-bold px-8 py-3 rounded-lg shadow-md transition transform hover:scale-105">
+          Accept Ride
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  const driverUserId = localStorage.getItem('userId') || '1'; // Set after login
+  let driverId = null;
+  let stompClient = null;
+
+  // DOM Elements
+  const statusEl = document.getElementById('status');
+  const requestsEl = document.getElementById('requests');
+  const noRequestsEl = document.getElementById('noRequests');
+  const tpl = document.getElementById('requestTpl');
+
+  // Profile Elements
+  const driverName = document.getElementById('driverName');
+  const driverEmail = document.getElementById('driverEmail');
+  const driverInitials = document.getElementById('driverInitials');
+  const driverStatus = document.getElementById('driverStatus');
+  const driverVehicle = document.getElementById('driverVehicle');
+  const driverPlate = document.getElementById('driverPlate');
+  const driverEarnings = document.getElementById('driverEarnings');
+  const driverRidesCount = document.getElementById('driverRidesCount');
+
+  function setStatus(text, color = 'text-gray-600') {
+    statusEl.textContent = text;
+    statusEl.className = `text-lg ${color} mb-8`;
+  }
+
+  async function loadDriverProfile() {
+    try {
+      const res = await fetch(`/api/drivers/user/${driverUserId}`);
+      if (!res.ok) throw new Error('Not found');
+      const driver = await res.json();
+
+      driverId = driver.id;
+      driverName.textContent = driver.name || 'Driver';
+      driverEmail.textContent = localStorage.getItem('userEmail') || 'driver@quickmove.com';
+      driverInitials.textContent = (driver.name || 'D').split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+      driverStatus.textContent = driver.status || 'OFFLINE';
+      driverStatus.className = driver.status === 'AVAILABLE' ? 'font-bold text-green-600' : 'font-bold text-orange-600';
+      driverVehicle.textContent = driver.vehicleType || '—';
+      driverPlate.textContent = driver.numberPlate || '—';
+
+      // Load earnings & ride count
+      const earningsRes = await fetch(`/api/drivers/${driver.id}/earnings`);
+      const ridesRes = await fetch(`/api/drivers/${driver.id}/rides`);
+      if (earningsRes.ok) driverEarnings.textContent = '$' + (await earningsRes.json()).toFixed(2);
+      if (ridesRes.ok) {
+        const rides = await ridesRes.json();
+        driverRidesCount.textContent = rides.filter(r => r.status === 'COMPLETED').length;
       }
+    } catch (e) {
+      setStatus('Driver profile load failed', 'text-red-600');
     }
+  }
 
-    // Remove MQTT connect; add STOMP connect
-    function connectStomp() {
-      setStatus('Connecting to server…', 'text-gray-600');
-      try {
-        const sock = new SockJS('/ws');
-        const stomp = Stomp.over(sock);
-        stomp.debug = null;
-        stomp.connect({}, () => {
-          setStatus('Connected — waiting for ride requests', 'text-green-600');
-          try {
-            stomp.subscribe('/topic/rideRequests', (msg) => {
-              if (!msg || !msg.body) return;
-              try { const ride = JSON.parse(msg.body); if (ride && ride.status === 'PENDING' && !ride.driverId) addRequestCard(ride); } catch(_){}
-            });
-          } catch(_){}
-        }, () => setStatus('Connection error', 'text-red-600'));
-      } catch (e) {
-        setStatus('WebSocket init failed', 'text-red-600');
-      }
-    }
+  function connectWebSocket() {
+    setStatus('Connecting to server...');
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.debug = null;
 
-    function addRequestCard(ride) {
-      if (document.getElementById('ride-' + ride.id)) return; // avoid duplicate cards
-      const node = tpl.content.firstElementChild.cloneNode(true);
-      node.id = 'ride-' + ride.id;
-      node.querySelector('[data-field="id"]').textContent = ride.id;
-      node.querySelector('[data-field="pickup"]').textContent = ride.pickupLocation || 'N/A';
-      node.querySelector('[data-field="dropoff"]').textContent = ride.dropoffLocation || 'N/A';
-      node.querySelector('[data-field="distance"]').textContent = (ride.distance ?? 0).toFixed?.(2) || Number(ride.distance || 0).toFixed(2);
-      node.querySelector('[data-field="duration"]').textContent = (ride.duration ?? 0).toFixed?.(1) || Number(ride.duration || 0).toFixed(1);
-      node.querySelector('[data-field="fare"]').textContent = (ride.fare ?? 0).toFixed?.(2) || Number(ride.fare || 0).toFixed(2);
-      node.querySelector('.acceptBtn').addEventListener('click', async () => {
-        await ensureDriverAvailable();
-        if (!driverId) { setStatus('Driver not ready', 'text-red-600'); return; }
-        acceptRide(ride.id);
+    stompClient.connect({}, () => {
+      setStatus('Online — Waiting for ride requests', 'text-green-600');
+      stompClient.subscribe('/topic/rideRequests', (msg) => {
+        if (msg.body) {
+          const ride = JSON.parse(msg.body);
+          if (ride.status === 'PENDING' && !ride.driverId) {
+            addRideCard(ride);
+            noRequestsEl.classList.add('hidden');
+          }
+        }
       });
-      requestsEl.prepend(node);
-    }
+    }, () => setStatus('Connection lost. Reconnecting...', 'text-red-600'));
+  }
 
-    async function acceptRide(rideId) {
-      setStatus(`Accepting ride ${rideId}...`, 'text-gray-600');
-      try {
-        const res = await fetch(`/api/drivers/${driverId}/rides/${rideId}/accept`, { method: 'POST' });
-        if (!res.ok) {
-          const errText = await res.text().catch(()=> '');
-          throw new Error('HTTP ' + res.status + (errText ? ' - ' + errText : ''));
-        }
-        const data = await res.json();
-        if (data && data.status === 'success') {
-          setStatus('Ride accepted. Opening tracking...', 'text-green-600');
-          const card = document.getElementById('ride-' + rideId);
-          if (card) card.remove();
-          // redirect driver to live tracking page and pass rideId (and driverId) as query params
-          const qs = `?rideId=${encodeURIComponent(rideId)}${driverId ? `&driverId=${encodeURIComponent(driverId)}` : ''}`;
-          window.location.href = '/driver-tracking.html' + qs;
-        } else {
-          setStatus((data && data.message) || 'Accept failed', 'text-red-600');
-        }
-      } catch (e) {
-        setStatus('Accept error: ' + (e && e.message ? e.message : e), 'text-red-600');
-      }
-    }
+  function addRideCard(ride) {
+    if (document.getElementById('ride-' + ride.id)) return;
+    const card = tpl.content.firstElementChild.cloneNode(true);
+    card.id = 'ride-' + ride.id;
+    card.querySelector('[data-field="id"]').textContent = ride.id;
+    card.querySelector('[data-field="pickup"]').textContent = ride.pickupLocation || '—';
+    card.querySelector('[data-field="dropoff"]').textContent = ride.dropoffLocation || '—';
+    card.querySelector('[data-field="distance"]').textContent = (ride.distance || 0).toFixed(1);
+    card.querySelector('[data-field="duration"]').textContent = Math.round(ride.duration || 0);
+    card.querySelector('[data-field="fare"]').textContent = (ride.fare || 0).toFixed(2);
 
-    async function preloadPendingRides(){
-      try{
-        const res = await fetch('/api/rides');
-        if(!res.ok) return; const rides = await res.json();
-        (rides||[]).filter(r=>r && r.status==='PENDING' && !r.driverId).forEach(addRequestCard);
-      }catch(_){ }
-    }
+    card.querySelector('.acceptBtn').onclick = () => acceptRide(ride.id);
+    requestsEl.prepend(card);
+  }
 
-    // start connection when page loads
-    window.addEventListener('load', () => { ensureDriverAvailable(); preloadPendingRides(); connectStomp(); });
-  </script>
+  async function acceptRide(rideId) {
+    if (!driverId) return;
+    setStatus('Accepting ride...');
+    const res = await fetch(`/api/drivers/${driverId}/rides/${rideId}/accept`, { method: 'POST' });
+    if (res.ok) {
+      document.getElementById('ride-' + rideId)?.remove();
+      if (requestsEl.children.length === 0) noRequestsEl.classList.remove('hidden');
+      setStatus('Ride accepted! Redirecting...', 'text-green-600');
+      setTimeout(() => {
+        window.location.href = `/driver-tracking.html?rideId=${rideId}&driverId=${driverId}`;
+      }, 1000);
+    } else {
+      setStatus('Failed to accept ride', 'text-red-600');
+    }
+  }
+
+  document.getElementById('logoutBtn').onclick = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = '/login.html';
+  };
+
+  // Init
+  window.addEventListener('load', () => {
+    loadDriverProfile();
+    connectWebSocket();
+  });
+</script>
 </body>
 </html>

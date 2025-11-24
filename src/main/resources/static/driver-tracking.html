@@ -2,15 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>QuickMove — Driver Tracking</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    @import url("https://rsms.me/inter/inter.css");
     #map { height: 520px; border-radius: 12px; overflow: hidden; }
     .status-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
-    .status-requested { background:#64748b; }
     .status-ontrip { background:#22c55e; }
     .status-error { background:#ef4444; }
     .you-icon { width: 26px; height: 26px; background:#22c55e; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,0.3); }
@@ -18,272 +16,184 @@
   </style>
 </head>
 <body class="bg-white text-slate-800">
-  <header class="border-b border-slate-200 bg-white/80 backdrop-blur">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="/ride-booking.html" class="text-xl font-bold text-orange-600">QuickMove</a>
-      <a href="/ride-booking.html" class="text-sm font-medium text-orange-600 hover:text-orange-700">Book a ride</a>
-    </div>
-  </header>
+<header class="border-b border-slate-200 bg-white/80 backdrop-blur">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <a href="/" class="text-xl font-bold text-orange-600">QuickMove</a>
+    <div>Ride in Progress</div>
+  </div>
+</header>
 
-  <main class="max-w-6xl mx-auto px-4 py-6">
-    <div class="mb-5">
-      <h1 class="text-2xl md:text-3xl font-bold text-orange-600">Driver Tracking (MQTT)</h1>
-      <div class="text-slate-500 text-sm">Subscribe to rider topic; publish your location</div>
+<main class="max-w-6xl mx-auto px-4 py-6">
+  <h1 class="text-2xl md:text-3xl font-bold text-orange-600 mb-2">Driver Tracking</h1>
+  <p class="text-slate-500 text-sm mb-6">Live location sharing with rider</p>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2">
+      <div id="map" class="border border-slate-200 shadow-lg"></div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      <div class="lg:col-span-2">
-        <div class="rounded-xl border border-slate-200 shadow-sm">
-          <div class="p-3">
-            <div id="map"></div>
-          </div>
+    <aside class="space-y-5">
+      <section class="bg-white rounded-xl border border-slate-200 shadow p-5">
+        <h2 class="text-lg font-semibold mb-4">Connection Status</h2>
+        <div class="flex items-center gap-2 text-sm">
+          <span id="connDot" class="status-dot status-error"></span>
+          <span id="connText">Connecting…</span>
         </div>
-      </div>
-      <aside class="space-y-4">
-        <section class="rounded-xl border border-slate-200 shadow-sm">
-          <div class="p-4">
-            <h2 class="text-lg font-semibold mb-3">MQTT connection</h2>
-            <div class="flex items-center mb-2 text-sm">
-              <span id="connDot" class="status-dot status-requested"></span>
-              <span id="connText" class="text-slate-600">Connecting…</span>
-            </div>
-            <div class="mb-2 text-xs text-slate-500">Rider topic</div>
-            <div id="topicRider" class="mb-3 font-mono text-sm break-all">—</div>
-            <div class="mb-2 text-xs text-slate-500">Driver topic</div>
-            <div id="topicDriver" class="mb-3 font-mono text-sm break-all">—</div>
-            <div class="mb-3">
-              <div class="text-slate-500 text-sm">Last rider location</div>
-              <div id="lastRiderText" class="text-xl font-semibold text-slate-800">—</div>
-            </div>
-            <label class="flex items-center gap-2 mb-3 select-none">
-              <input class="h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500" type="checkbox" id="shareSwitch" />
-              <span class="text-sm">Share my location to rider</span>
-            </label>
-            <button id="endTripBtn" class="w-full px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white disabled:opacity-60 disabled:cursor-not-allowed" disabled>End Trip (driver only)</button>
-            <!-- Button shown after trip is successfully completed to proceed to payment -->
-            <button id="gotoPaymentBtn" style="display:none;" class="w-full mt-2 px-4 py-2 rounded bg-amber-600 hover:bg-amber-700 text-white">Go to Payment</button>
-          </div>
-        </section>
-      </aside>
-    </div>
-  </main>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <script>
-    (function(){
-      const MQTT_URL = window.MQTT_URL || 'wss://355bf2c4e74f4d59a6d6fd43c1b98ab1.s1.eu.hivemq.cloud:8884/mqtt';
-      const MQTT_USERNAME = window.MQTT_USERNAME || 'rdwij';
-      const MQTT_PASSWORD = window.MQTT_PASSWORD || 'Password1';
-      const RIDER_TOPIC_TEMPLATE = window.MQTT_RIDER_TOPIC || 'rides/{id}/rider';
-      const DRIVER_TOPIC_TEMPLATE = window.MQTT_DRIVER_TOPIC || 'rides/{id}/driver';
+        <div class="mt-4 space-y-3 text-sm">
+          <div><strong>Rider Topic:</strong> <span id="topicRider" class="font-mono text-xs">—</span></div>
+          <div><strong>Driver Topic:</strong> <span id="topicDriver" class="font-mono text-xs">—</span></div>
+          <div><strong>Last Rider Location:</strong> <div id="lastRiderText" class="font-medium">—</div></div>
+        </div>
 
-      function getQuery(){ const p = new URLSearchParams(location.search); return Object.fromEntries(p.entries()); }
-      const qp = getQuery();
-      const qpRideId = qp.rideId && !Number.isNaN(Number(qp.rideId)) ? String(qp.rideId) : null;
-      const qpDriverIdNum = qp.driverId ? Number(qp.driverId) : null;
-      const driverUserIdQP = qp.driverUserId || null;
-      const riderUserIdQP = qp.riderUserId || qp.userId || null;
-      const autoShare = !!(qp.driverId || driverUserIdQP);
+        <label class="flex items-center gap-3 mt-5 cursor-pointer">
+          <input type="checkbox" id="shareSwitch" class="w-5 h-5 text-orange-600" checked />
+          <span>Share my location with rider</span>
+        </label>
 
-      const connDot = document.getElementById('connDot');
-      const connText = document.getElementById('connText');
-      const topicRiderEl = document.getElementById('topicRider');
-      const topicDriverEl = document.getElementById('topicDriver');
-      const lastRiderText = document.getElementById('lastRiderText');
-      const shareSwitch = document.getElementById('shareSwitch');
-      const endTripBtn = document.getElementById('endTripBtn');
-      const gotoPaymentBtn = document.getElementById('gotoPaymentBtn');
+        <button id="endTripBtn" class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition">
+          End Trip (Driver Only)
+        </button>
 
-      let rideIdUsed = qpRideId;
-      let driverIdNumeric = qpDriverIdNum;
-      let driverUserIdUsed = driverUserIdQP;
-      let riderUserIdUsed = riderUserIdQP;
-      let riderTopic = '—';
-      let driverTopic = '—';
-      let currentRideStatus = null;
+        <!-- Payment Button - Hidden until trip ends -->
+        <button id="gotoPaymentBtn" style="display:none;" class="mt-3 w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg transition">
+          Go to Payment — $<span id="fareAmount">0.00</span>
+        </button>
+      </section>
+    </aside>
+  </div>
+</main>
 
-      function setConn(status, text){
-        connText.textContent = text;
-        connDot.className = 'status-dot ' + (status==='ok' ? 'status-ontrip' : status==='err' ? 'status-error' : 'status-requested');
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+  const qp = Object.fromEntries(new URLSearchParams(location.search));
+  const rideId = qp.rideId;
+  const driverId = qp.driverId ? Number(qp.driverId) : null;
+
+  if (!rideId || !driverId) {
+    alert("Missing rideId or driverId");
+    throw new Error("Invalid access");
+  }
+
+  const MQTT_URL = 'wss://355bf2c4e74f4d59a6d6fd43c1b98ab1.s1.eu.hivemq.cloud:8884/mqtt';
+  const MQTT_USER = 'rdwij';
+  const MQTT_PASS = 'Password1';
+
+  const riderTopic = `rides/${rideId}/rider`;
+  const driverTopic = `rides/${rideId}/driver`;
+
+  document.getElementById('topicRider').textContent = riderTopic;
+  document.getElementById('topicDriver').textContent = driverTopic;
+
+  let map, youMarker, riderMarker;
+  function initMap() {
+    map = L.map('map').setView([6.9271, 79.8612], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  }
+
+  function updateMarker(marker, lat, lng, iconHtml, tooltip) {
+    const latlng = [lat, lng];
+    if (marker) marker.setLatLng(latlng);
+    else {
+      const icon = L.divIcon({ html: iconHtml, iconSize: [26,26], className: '' });
+      marker = L.marker(latlng, { icon }).addTo(map).bindTooltip(tooltip, { permanent: false });
+    }
+    marker.setTooltipContent(tooltip);
+    return marker;
+  }
+
+  // MQTT Setup
+  const client = mqtt.connect(MQTT_URL, {
+    username: MQTT_USER,
+    password: MQTT_PASS,
+    clientId: `driver_${driverId}_${Date.now()}`
+  });
+
+  client.on('connect', () => {
+    document.getElementById('connDot').className = 'status-dot status-ontrip';
+    document.getElementById('connText').textContent = 'Connected & Sharing';
+    client.subscribe(riderTopic);
+  });
+
+  client.on('message', (topic, msg) => {
+    if (topic !== riderTopic) return;
+    try {
+      const data = JSON.parse(msg.toString());
+      if (data.lat && data.lng) {
+        document.getElementById('lastRiderText').textContent =
+                `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
+        riderMarker = updateMarker(riderMarker, data.lat, data.lng,
+                '<div class="rider-icon">Person</div>',
+                `<strong>Rider</strong><br>${new Date(data.ts || Date.now()).toLocaleTimeString()}`
+        );
+        map.setView([data.lat, data.lng], 16);
       }
+    } catch (e) {}
+  });
 
-      async function fetchJSON(url, opts){ const res = await fetch(url, opts); if(!res.ok) throw new Error(await res.text()); return res.json(); }
-      async function resolveContext(){
-        if (rideIdUsed) {
-          const ride = await fetchJSON(`/api/rides/${encodeURIComponent(rideIdUsed)}`);
-          riderUserIdUsed = ride.userId;
-          driverUserIdUsed = ride.driverId; if(!driverUserIdUsed) throw new Error('No driver assigned');
-        } else if (driverUserIdUsed) {
-          const ride = await fetchJSON(`/api/rides/active?driverUserId=${encodeURIComponent(driverUserIdUsed)}`);
-          rideIdUsed = String(ride.id);
-          riderUserIdUsed = ride.userId;
-        } else if (riderUserIdUsed) {
-          const ride = await fetchJSON(`/api/rides/active?riderUserId=${encodeURIComponent(riderUserIdUsed)}`);
-          rideIdUsed = String(ride.id);
-          driverUserIdUsed = ride.driverId; if(!driverUserIdUsed) throw new Error('No driver assigned');
-        } else {
-          throw new Error('Provide rideId or driverUserId or riderUserId');
-        }
-        if (!driverIdNumeric) {
-          const driver = await fetchJSON(`/api/drivers/user/${encodeURIComponent(driverUserIdUsed)}`);
-          driverIdNumeric = Number(driver.id);
-        }
-        riderTopic = (RIDER_TOPIC_TEMPLATE||'').replace('{id}', rideIdUsed);
-        driverTopic = (DRIVER_TOPIC_TEMPLATE||'').replace('{id}', rideIdUsed);
-        topicRiderEl.textContent = riderTopic;
-        topicDriverEl.textContent = driverTopic;
-        endTripBtn.disabled = !driverIdNumeric;
-      }
+  // Share Driver Location
+  let watchId = null;
+  function startSharing() {
+    watchId = navigator.geolocation.watchPosition(pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      const payload = JSON.stringify({ lat, lng, ts: Date.now(), role: 'driver' });
+      client.publish(driverTopic, payload);
+      youMarker = updateMarker(youMarker, lat, lng,
+              '<div class="you-icon">Car</div>',
+              `<strong>You (Driver)</strong><br>${new Date().toLocaleTimeString()}`
+      );
+      map.setView([lat, lng], 16);
+    }, null, { enableHighAccuracy: true });
+  }
 
-      async function fetchRide(){ if(!rideIdUsed) return null; try{ return await fetchJSON(`/api/rides/${encodeURIComponent(rideIdUsed)}`); }catch(_){ return null; } }
-      async function startRideIfNeeded(){
-        const ride = await fetchRide(); if(!ride) throw new Error('Ride not found');
-        currentRideStatus = (ride.status||'').toUpperCase();
-        if(currentRideStatus === 'PENDING') throw new Error('Ride not accepted yet');
-        if(currentRideStatus === 'ACCEPTED'){
-          const r = await fetch(`/api/drivers/${encodeURIComponent(driverIdNumeric)}/rides/${encodeURIComponent(rideIdUsed)}/start`, { method:'POST' });
-          if(!r.ok){ throw new Error('Unable to start ride'); }
-          currentRideStatus = 'IN_PROGRESS';
-        }
-        return true;
-      }
-      async function completeRide(){
-        const r = await fetch(`/api/drivers/${encodeURIComponent(driverIdNumeric)}/rides/${encodeURIComponent(rideIdUsed)}/complete`, { method:'POST' });
-        if(!r.ok){ throw new Error('Unable to complete ride'); }
-        currentRideStatus = 'COMPLETED';
-      }
-      async function endTrackingSession(){
-        try { await fetch(`/api/tracking-sessions/ride/${encodeURIComponent(rideIdUsed)}/end?driverId=${encodeURIComponent(driverIdNumeric)}`, { method:'POST' }); }
-        catch(_){ /* best-effort */ }
-      }
-      // After trip completes: stop sharing and show a button to proceed to payment
-      async function finishUI(){
-        stopShare(); shareSwitch.checked=false; endTripBtn.disabled=true; setConn('ok','Trip ended');
-        // Try to fetch ride to determine the fare
-        let amount = 0;
-        try{
-          const ride = await fetchRide();
-          amount = (ride && (ride.fare || ride.amount)) || 0;
-        }catch(_){ /* ignore */ }
-        // Show and enable the payment button with amount if available
-        if(gotoPaymentBtn){
-          // Always make the button visible and enabled so driver can navigate to payment
-          gotoPaymentBtn.style.display = 'block';
-          gotoPaymentBtn.disabled = false;
-          try{ gotoPaymentBtn.textContent = `Go to Payment${amount ? ' — $' + Number(amount).toFixed(2): ''}`; }catch(_){ gotoPaymentBtn.textContent = 'Go to Payment'; }
-        }
-      }
+  document.getElementById('shareSwitch').addEventListener('change', e => {
+    if (e.target.checked) startSharing();
+    else if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  });
 
-      async function fetchAndShowRide(){
-        try{
-          const ride = await fetchRide();
-          if(ride){
-            const st=(ride.status||'').toUpperCase();
-            currentRideStatus=st;
-            // Enable only if actionable; otherwise disable
-            endTripBtn.disabled = !driverIdNumeric || (st!=='ACCEPTED' && st!=='IN_PROGRESS');
-            if(st==='COMPLETED' || st==='CANCELLED'){ setConn('ok', st==='COMPLETED' ? 'Trip completed' : 'Trip cancelled'); }
-          }
-        } catch(_){ endTripBtn.disabled = !driverIdNumeric; }
-      }
+  // End Trip → Complete Ride → Show Payment Button
+  document.getElementById('endTripBtn').addEventListener('click', async () => {
+    if (!confirm("End this trip?")) return;
 
-      // Map
-      let map, youMarker, riderMarker;
-      function initMap(){ map = L.map('map', { scrollWheelZoom:true }); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; OpenStreetMap contributors' }).addTo(map); map.setView([20,0],2); }
-      function setYouMarker(pos, ts){
-        if(!pos) return; const latlng=[pos.lat,pos.lng]; const html=`<div><strong>You (Driver)</strong><br>${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}${ts? `<br>${new Date(ts).toLocaleTimeString()}`:''}</div>`;
-        if(youMarker){ youMarker.setLatLng(latlng); const tt=youMarker.getTooltip(); if(tt) tt.setContent(html); else youMarker.bindTooltip(html,{direction:'top'}); }
-        else { const icon=L.divIcon({className:'', html:'<div class="you-icon">🚗</div>', iconSize:[26,26], iconAnchor:[13,13]}); youMarker=L.marker(latlng,{icon}).addTo(map); youMarker.bindTooltip(html,{direction:'top'}); }
-        try{ map.setView(latlng, Math.max(13, map.getZoom())); }catch(_){ }
-      }
-      function setRiderMarker(pos, ts){
-        if(!pos) return; const latlng=[pos.lat,pos.lng]; const html=`<div><strong>Rider</strong><br>${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}${ts? `<br>${new Date(ts).toLocaleTimeString()}`:''}</div>`;
-        if(riderMarker){ riderMarker.setLatLng(latlng); const tt=riderMarker.getTooltip(); if(tt) tt.setContent(html); else riderMarker.bindTooltip(html,{direction:'top'}); }
-        else { const icon=L.divIcon({className:'', html:'<div class="rider-icon">🧑‍🦰</div>', iconSize:[26,26], iconAnchor:[13,13]}); riderMarker=L.marker(latlng,{icon}).addTo(map); riderMarker.bindTooltip(html,{direction:'top'}); }
-      }
+    document.getElementById('endTripBtn').disabled = true;
+    document.getElementById('endTripBtn').textContent = "Completing...";
 
-      initMap();
-      setConn('wait','Resolving ride…');
+    try {
+      // 1. Start ride if not started
+      await fetch(`/api/drivers/${driverId}/rides/${rideId}/start`, { method: 'POST' });
 
-      const clientId = `driver-ui-${Math.random().toString(16).slice(2,8)}`;
-      const options = { clientId, clean:true, reconnectPeriod:2000, keepalive:60, username:MQTT_USERNAME, password:MQTT_PASSWORD };
-      let client; try{ client = mqtt.connect(MQTT_URL, options); }catch(e){ setConn('err','Connect error'); }
+      // 2. Complete ride
+      const completeRes = await fetch(`/api/drivers/${driverId}/rides/${rideId}/complete`, { method: 'POST' });
+      if (!completeRes.ok) throw new Error("Failed to complete ride");
 
-      let geoWatchId=null;
-      function stopShare(){ if(geoWatchId!=null){ navigator.geolocation.clearWatch(geoWatchId); geoWatchId=null; } }
-      async function startShare(){
-        try{ if(!rideIdUsed || !driverIdNumeric){ await resolveContext(); } }
-        catch(e){ alert('Cannot start sharing: ' + (e.message||e)); shareSwitch.checked=false; return; }
-        if(!('geolocation' in navigator)){ alert('Geolocation not supported'); shareSwitch.checked=false; return; }
-        try{ await fetch('/api/tracking-sessions', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ rideId:Number(rideIdUsed), driverId:driverIdNumeric, riderUserId:riderUserIdUsed, createdBy:'driver' }) }); }catch(_){ }
-        geoWatchId = navigator.geolocation.watchPosition((pos)=>{
-          const lat=pos.coords.latitude, lng=pos.coords.longitude, ts=Date.now();
-          try{ client && driverTopic && client.publish(driverTopic, JSON.stringify({ lat,lng,ts,role:'driver', rideId: rideIdUsed }), { qos:0, retain:false }); }catch(_){ }
-          setYouMarker({ lat, lng }, ts);
-        }, (err)=>{ alert('Unable to access your location: ' + (err?.message||'Permission denied or unavailable')); shareSwitch.checked=false; stopShare(); }, { enableHighAccuracy:true, maximumAge:10000, timeout:10000 });
-      }
+      const ride = await (await fetch(`/api/rides/${rideId}`)).json();
+      const fare = (ride.fare || ride.amount || 0).toFixed(2);
 
-      shareSwitch.addEventListener('change', function(){ if(shareSwitch.checked) startShare(); else stopShare(); });
+      // Success: Stop sharing + show payment
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+      document.getElementById('shareSwitch').checked = false;
+      document.getElementById('connText').textContent = 'Trip Completed';
+      document.getElementById('endTripBtn').style.display = 'none';
 
-      endTripBtn.addEventListener('click', async function(){
-        try{ if(!rideIdUsed || !driverIdNumeric){ await resolveContext(); } }
-        catch(e){ alert('Cannot end trip: ' + (e.message||e)); return; }
-        endTripBtn.disabled = true;
-        try{
-          await startRideIfNeeded();
-          await completeRide();
-          await endTrackingSession();
-          await finishUI();
-        }catch(e){
-          endTripBtn.disabled = false;
-          alert('End trip failed: ' + (e.message||e));
-        }
-      });
+      const payBtn = document.getElementById('gotoPaymentBtn');
+      document.getElementById('fareAmount').textContent = fare;
+      payBtn.style.display = 'block';
 
-      // Payment button handler: navigate to payment page with rideId and amount
-      if(gotoPaymentBtn){
-        gotoPaymentBtn.addEventListener('click', async function(){
-          // Ensure we have a ride and amount
-          let ride = null;
-          try{ ride = await fetchRide(); }catch(_){ }
-          const id = rideIdUsed || (ride && String(ride.id));
-          const amount = (ride && (ride.fare || ride.amount)) || '';
-          if(!id){
-            // try to resolve context and retry
-            try{ await resolveContext(); }
-            catch(e){ alert('Ride ID not available: ' + (e.message||e)); return; }
-          }
-          const q = `?rideId=${encodeURIComponent(id)}&amount=${encodeURIComponent(Number(amount||0).toFixed(2))}`;
-          // Use full path so relative navigation is clear
-          window.location.href = window.location.origin + '/payment.html' + q;
-        });
-      }
+      payBtn.onclick = () => {
+        window.location.href = `/payment.html?rideId=${rideId}&amount=${fare}`;
+      };
 
-      if(client){
-        client.on('connect', async ()=>{
-          try{
-            await resolveContext();
-            setConn('ok','Connected');
-            if(riderTopic){ try{ client.subscribe(riderTopic, { qos:0 }); }catch(_){ } }
-            if(autoShare){ shareSwitch.checked=true; startShare(); }
-            fetchAndShowRide();
-          }catch(e){ setConn('err','Resolve failed'); alert('Invalid IDs: ' + (e.message||e)); }
-        });
-        client.on('reconnect', ()=> setConn('wait','Reconnecting…'));
-        client.on('close', ()=> setConn('wait','Disconnected'));
-        client.on('error', ()=> setConn('err','Connection error'));
-        client.on('message', (topic, message)=>{
-          if(topic !== riderTopic) return;
-          try{ const data = JSON.parse(message.toString()); if(typeof data.lat!=='number'||typeof data.lng!=='number') return; lastRiderText.textContent = `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}${data.ts? ' • ' + new Date(data.ts).toLocaleTimeString():''}`; setRiderMarker({ lat:data.lat, lng:data.lng }, data.ts); }catch(_){ }
-        });
-      }
+    } catch (err) {
+      alert("Error ending trip: " + err.message);
+      document.getElementById('endTripBtn').disabled = false;
+      document.getElementById('endTripBtn').textContent = "End Trip (Driver Only)";
+    }
+  });
 
-      // Poll button state every 5s to reflect backend changes
-      const endBtnPoll = setInterval(fetchAndShowRide, 5000);
-
-      window.addEventListener('beforeunload', ()=>{ try{ clearInterval(endBtnPoll); stopShare(); client && client.end(true); }catch(_){ } });
-    })();
-  </script>
+  // Init
+  initMap();
+  startSharing(); // Auto-share on load
+</script>
 </body>
 </html>

@@ -4,56 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - QuickMove</title>
+    <link rel="stylesheet" href="/css/styles.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .bg-primary { background-color: var(--primary); }
+        .hover\:bg-primary-dark:hover { background-color: var(--primary-dark); }
+        .text-primary { color: var(--primary); }
+    </style>
 </head>
-<body class="p-8 bg-gray-50">
-<div class="max-w-md mx-auto bg-white p-8 rounded shadow">
-    <h1 class="text-2xl font-bold mb-4">Login</h1>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
 
-    <input id="email" type="email" placeholder="Email" class="w-full p-2 border rounded mb-2">
-    <input id="password" type="password" placeholder="Password" class="w-full p-2 border rounded mb-4">
+<!-- Home button: redirects to index (top-right) -->
+<a href="/index.html" class="home-btn">Home</a>
 
-    <button id="loginBtn" class="w-full bg-primary text-white py-2 rounded">Login</button>
+<div class="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
+    <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">Welcome Back</h1>
 
-    <div id="message" class="mt-4"></div>
-    <div class="mt-4 text-sm text-gray-600">Don't have an account? <a href="/register" class="text-primary">Register</a></div>
+    <form id="loginForm">
+        <div class="mb-5">
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+            <input id="email" type="email" required placeholder="you@example.com"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        </div>
+
+        <div class="mb-6">
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <input id="password" type="password" required placeholder="••••••••"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        </div>
+
+        <button type="submit" id="loginBtn"
+                class="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-lg transition duration-200 transform hover:scale-105">
+            Login
+        </button>
+    </form>
+
+    <div id="message" class="mt-6 text-center font-medium"></div>
+
+    <div class="mt-6 text-center text-sm text-gray-600">
+        Don't have an account?
+        <a href="/register.html" class="text-primary font-semibold hover:underline">Register here</a>
+    </div>
 </div>
 
 <script>
-    document.getElementById('loginBtn').addEventListener('click', async () => {
-        const email = document.getElementById('email').value;
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault(); // Prevent default form submit
+
+        const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         const message = document.getElementById('message');
-        message.innerText = '';
+        const loginBtn = document.getElementById('loginBtn');
+
+        if (!email || !password) {
+            message.innerHTML = '<p class="text-red-600">Please fill in both fields</p>';
+            return;
+        }
+
+        message.innerHTML = '';
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Logging in...';
+
         try {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({email, password})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
             });
+
             const data = await res.json();
+
             if (!res.ok) {
-                message.innerHTML = '<div class="text-red-600">Error: ' + (data.error || JSON.stringify(data)) + '</div>';
-            } else {
-                // show simple success and redirect based on role
-                const user = data.user || data;
-                message.innerHTML = '<div class="text-green-600">Login successful. Welcome ' + (user.name || '') + ' (' + (user.role || '') + ')</div>';
-                const role = (user && user.role) ? user.role.toUpperCase() : '';
-                setTimeout(() => {
-                    if (role === 'CUSTOMER') {
-                        window.location.href = '/ride-booking.html';
-                    } else if (role === 'DRIVER') {
-                        window.location.href = '/driver-dashboard.html';
-                    } else if (role === 'ADMIN') {
-                        window.location.href = '/admin-drivers.html';
-                    } else {
-                        // default
-                        window.location.href = '/';
-                    }
-                }, 800);
+                message.innerHTML = `<p class="text-red-600">Error: ${data.error || 'Invalid credentials'}</p>`;
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+                return;
             }
-        } catch (e) {
-            message.innerHTML = '<div class="text-red-600">Network error</div>';
+
+            const user = data.user || data;
+            const role = (user.role || '').toUpperCase();
+
+            message.innerHTML = `<p class="text-green-600 text-lg">Welcome, ${user.name || 'User'}!</p>`;
+
+            setTimeout(() => {
+                if (role === 'CUSTOMER') window.location.href = '/ride-booking.html';
+                else if (role === 'DRIVER') window.location.href = '/driver-dashboard.html';
+                else if (role === 'ADMIN') window.location.href = '/admin-drivers.html';
+                else window.location.href = '/';
+            }, 1000);
+
+        } catch (err) {
+            message.innerHTML = '<p class="text-red-600">Network error. Please try again.</p>';
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Login';
         }
     });
 </script>
